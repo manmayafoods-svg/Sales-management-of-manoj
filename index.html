@@ -2330,6 +2330,15 @@ window.supabase = createClient(
             <button class="btn btn-secondary btn-sm" onclick="changeAppPin()">Update PIN</button>
           </div>
         </div>
+        <div style="border:1px solid var(--gray-200);border-radius:10px;padding:14px;grid-column:1/-1;background:#fff5f5">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">🔐 Admin Delete PIN</div>
+          <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">Kunai pani record (stock, sale, booking, valuation, receipt, voucher, purchase) delete garda yo separate PIN chahincha — admin le matra thaha huncha. Pahilo patak delete garda automatic set garna sakincha; yaha bata pani change garna sakincha.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <input type="password" id="change-admin-pin-old" placeholder="Purano Admin PIN" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:12px">
+            <input type="password" id="change-admin-pin-new" placeholder="Naya Admin PIN" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:12px">
+            <button class="btn btn-secondary btn-sm" onclick="changeAdminDeletePin()">Update Admin PIN</button>
+          </div>
+        </div>
         <div style="border:1px solid var(--gray-200);border-radius:10px;padding:14px;grid-column:1/-1;background:#f5f3ff">
           <div style="font-size:13px;font-weight:600;margin-bottom:4px">⚡ Real-time Sync (Firebase) — 2+ PC ma instant update</div>
           <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">Dui ya badi PC ma ekai samaya kaam garda, ek device ko change arko ma instant (1 second bhitra) dekhinchha. Firebase console bata config copy garera tala paste garnus.</div>
@@ -2740,6 +2749,67 @@ async function changeAppPin(){
   document.getElementById('change-pin-old').value='';
   document.getElementById('change-pin-new').value='';
   toast('✅ PIN update vayo');
+}
+
+// ══════════════════════════════════════════════
+//  🔐 ADMIN DELETE PIN (separate from app-unlock PIN)
+//  Delete garna yo PIN chahincha — admin le matra thaha huncha.
+// ══════════════════════════════════════════════
+const ADMIN_PIN_KEY='dah2-admin-delete-pin-hash';
+
+async function getAdminPinHash(){
+  let hash=null;
+  try{ hash=JSON.parse(localStorage.getItem(ADMIN_PIN_KEY)||'null'); }catch(e){}
+  if(!hash){
+    try{
+      const cloudHash=await cloudPull(ADMIN_PIN_KEY);
+      if(cloudHash){ localStorage.setItem(ADMIN_PIN_KEY,JSON.stringify(cloudHash)); hash=cloudHash; }
+    }catch(e){}
+  }
+  return hash;
+}
+
+// Returns true if allowed to proceed with delete, false if blocked/cancelled.
+async function requireAdminPin(){
+  const stored=await getAdminPinHash();
+  if(!stored){
+    // No admin PIN set yet — set it up now (first time only).
+    const p1=prompt('Admin Delete PIN set garnus (kam se kam 4 digit) — yo PIN pheri delete garda chahincha:');
+    if(p1===null) return false;
+    if(!p1||p1.trim().length<4){ alert('Kam se kam 4 digit/character ko PIN halnus.'); return false; }
+    const p2=prompt('Admin Delete PIN confirm garnus:');
+    if(p1.trim()!==(p2||'').trim()){ alert('PIN milena. Phir try garnus.'); return false; }
+    const h=await sha256Hex(PIN_SALT+'admin-del-'+p1.trim());
+    localStorage.setItem(ADMIN_PIN_KEY,JSON.stringify(h));
+    cloudPush(ADMIN_PIN_KEY,h);
+    toast('✅ Admin Delete PIN set vayo');
+    return true;
+  }
+  const entered=prompt('🔐 Delete garna Admin PIN halnus:');
+  if(entered===null) return false;
+  const enteredHash=await sha256Hex(PIN_SALT+'admin-del-'+entered.trim());
+  if(enteredHash!==stored){
+    alert('❌ Galat Admin PIN. Delete cancel vayo.');
+    return false;
+  }
+  return true;
+}
+
+async function changeAdminDeletePin(){
+  const oldVal=(document.getElementById('change-admin-pin-old')?.value||'').trim();
+  const newVal=(document.getElementById('change-admin-pin-new')?.value||'').trim();
+  if(!newVal||newVal.length<4){ alert('Naya Admin PIN kam se kam 4 digit/character hunu parcha'); return; }
+  const stored=await getAdminPinHash();
+  if(stored){
+    const oldHash=await sha256Hex(PIN_SALT+'admin-del-'+oldVal);
+    if(oldHash!==stored){ alert('Purano Admin PIN milena!'); return; }
+  }
+  const newHash=await sha256Hex(PIN_SALT+'admin-del-'+newVal);
+  localStorage.setItem(ADMIN_PIN_KEY,JSON.stringify(newHash));
+  cloudPush(ADMIN_PIN_KEY,newHash);
+  const oldEl=document.getElementById('change-admin-pin-old'); if(oldEl)oldEl.value='';
+  const newEl=document.getElementById('change-admin-pin-new'); if(newEl)newEl.value='';
+  toast('✅ Admin Delete PIN update vayo');
 }
 
 async function startAppAfterUnlock(){
@@ -3460,6 +3530,7 @@ function editStock(id){
 
 async function deleteStock(id){
   if(!confirm('Yo bike stock bata delete garne?'))return;
+  if(!(await requireAdminPin()))return;
   stock=stock.filter(s=>s.id!==id);
   await dbSet('dah2-stock',stock);
   render();toast('Deleted ✓');
@@ -3761,6 +3832,7 @@ async function saveSale(){
 
 async function deleteSale(i){
   if(!confirm('Yo sale delete garne?'))return;
+  if(!(await requireAdminPin()))return;
   // Restore stock if possible
   const s=sales[i];
   if(s.stockId){const item=stock.find(x=>x.id===s.stockId);if(item&&item.status==='out'){item.status='in';delete item.soldDate;await dbSet('dah2-stock',stock);}}
@@ -3901,7 +3973,7 @@ async function saveBooking(){
   closeModal('booking');render();editBookingId=null;
 }
 async function completeBooking(i){bookings[i].status='Completed';await dbSet('dah2-bookings',bookings);render();toast('Booking completed ✓');}
-async function deleteBooking(i){if(!confirm('Delete booking?'))return;bookings.splice(i,1);await dbSet('dah2-bookings',bookings);render();toast('Deleted ✓');}
+async function deleteBooking(i){if(!confirm('Delete booking?'))return;if(!(await requireAdminPin()))return;bookings.splice(i,1);await dbSet('dah2-bookings',bookings);render();toast('Deleted ✓');}
 
 // ══════════════════════════════════════════════
 //  DELIVERY SHEET — STOCK LOOKUP
@@ -4978,6 +5050,7 @@ function loadValuationToForm(i){
 
 async function deleteValuationSheet(i){
   if(!confirm('This valuation delete garne?'))return;
+  if(!(await requireAdminPin()))return;
   valuationSheets.splice(i,1);
   await dbSet('dah2-valuation-sheets',valuationSheets);
   renderValuationLedger();toast('Deleted ✓');
@@ -5463,8 +5536,9 @@ function printSingleReceipt(id){
   win.document.close();
 }
 
-function deleteReceiptFromLedger(id){
+async function deleteReceiptFromLedger(id){
   if(!confirm('Delete this receipt from the ledger?')) return;
+  if(!(await requireAdminPin()))return;
   receipts=receipts.filter(r=>r.id!==id);
   dbSet('dah2-receipts',receipts);
   renderReceiptLedger();
@@ -5730,8 +5804,9 @@ function loadVoucherFromLedger(id){
   toast('📂 Voucher loaded into form — edit and click "Save to Ledger" to update');
 }
 
-function deleteVoucherFromLedger(id){
+async function deleteVoucherFromLedger(id){
   if(!confirm('Delete this voucher from the ledger?')) return;
+  if(!(await requireAdminPin()))return;
   vouchers=vouchers.filter(v=>v.id!==id);
   dbSet('dah2-vouchers',vouchers);
   renderVoucherLedger();
@@ -6795,8 +6870,9 @@ function savePurchaseEntry(){
 }
 
 // ── Delete Entry ──
-function deletePurchaseEntry(idx){
+async function deletePurchaseEntry(idx){
   if(!confirm('Yo purchase entry delete garne?')) return;
+  if(!(await requireAdminPin()))return;
   loadPurchases();
   purchases.splice(idx,1);
   savePurchases();
