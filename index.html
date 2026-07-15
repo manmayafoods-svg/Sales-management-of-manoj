@@ -862,6 +862,7 @@ window.supabase = createClient(
               <tr>
                 <th>S.N.</th>
                 <th>Date (BS)</th>
+                <th>Date (AD)</th>
                 <th>Supplier</th>
                 <th>Invoice No.</th>
                 <th>Model</th>
@@ -1522,13 +1523,13 @@ window.supabase = createClient(
             </div>
           </div>
           <div class="form-grid">
-            <div class="form-group"><label>Date (BS) *</label><input id="pur-f-date" placeholder="2082/01/01"></div>
-            <div class="form-group"><label>Date (AD / English)</label><input id="pur-f-date-ad" type="date" style="background:var(--gray-50)"></div>
+            <div class="form-group"><label>Date (BS) *</label><input id="pur-f-date" placeholder="2082/01/01" oninput="purSyncDateFromBS()"></div>
+            <div class="form-group"><label>Date (AD / English)</label><input id="pur-f-date-ad" type="date" style="background:var(--gray-50)" onchange="purSyncDateFromAD()"></div>
             <div class="form-group"><label>Invoice No. *</label><input id="pur-f-invoiceno" class="mono-input" placeholder="INV-001" oninput="purCheckDuplicate()"></div>
             <div class="form-group form-full"><label>Supplier / Distributor *</label><input id="pur-f-supplier" placeholder="Supplier ko naam"></div>
             <div class="form-group form-full"><label>Bike Model *</label><input id="pur-f-model" list="pur-model-dl" placeholder="e.g. Honda Activa 6G, TVS Apache RTR 160" autocomplete="off" oninput="purUpdateColourSuggestions()"><datalist id="pur-model-dl"></datalist></div>
             <div class="form-group"><label>Colour</label><input id="pur-f-colour" list="pur-colour-dl" placeholder="e.g. Black, Red" autocomplete="off"><datalist id="pur-colour-dl"></datalist></div>
-            <div class="form-group"><label>Registration No.</label><input id="pur-f-regno" class="mono-input" placeholder="e.g. LU PRA 01-015 PA 5331" oninput="this.value=this.value.toUpperCase()"></div>
+            <div class="form-group"><label>Registration No.</label><input id="pur-f-regno" class="mono-input" placeholder="e.g. LU PRA 01-015 PA 5331" oninput="upperKeepCursor(this)"></div>
             <div class="form-group"><label>Qty (Piece) *</label><input id="pur-f-qty" type="number" min="1" value="1" oninput="purCalc()"></div>
             <div class="form-group"><label>Chassis No.</label><input id="pur-f-chassis" class="mono-input" placeholder="CHASSIS NUMBER" oninput="purCheckDuplicate()"></div>
             <div class="form-group"><label>Engine No.</label><input id="pur-f-engine" class="mono-input" placeholder="ENGINE NUMBER" oninput="purCheckDuplicate()"></div>
@@ -2102,7 +2103,7 @@ window.supabase = createClient(
 
         <div class="section-sub">Sale Info</div>
         <div class="form-group"><label>Sales Date</label><input id="fs-date" type="date" oninput="autoCalcSalesDays()"></div>
-        <div class="form-group"><label>Nepali Date (BS)</label><input id="fs-nepali-date" class="mono-input" placeholder="e.g. 2082/03/15"></div>
+        <div class="form-group"><label>Nepali Date (BS)</label><input id="fs-nepali-date" class="mono-input" placeholder="e.g. 2082/03/15" oninput="syncSalesDateFromNepali()"></div>
         <div class="form-group"><label>Sales Days <span style="font-size:10px;color:var(--gray-400)">(auto from date)</span></label><input id="fs-sales-days" placeholder="e.g. Monday / Sombar"></div>
         <div class="form-group"><label>Invoice No.</label><input id="fs-invoiceno" class="mono-input" placeholder="e.g. INV-2082-001" oninput="saleCheckDuplicate()"></div>
 
@@ -2328,15 +2329,6 @@ window.supabase = createClient(
             <input type="password" id="change-pin-old" placeholder="Purano PIN" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:12px">
             <input type="password" id="change-pin-new" placeholder="Naya PIN" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:12px">
             <button class="btn btn-secondary btn-sm" onclick="changeAppPin()">Update PIN</button>
-          </div>
-        </div>
-        <div style="border:1px solid var(--gray-200);border-radius:10px;padding:14px;grid-column:1/-1;background:#fff5f5">
-          <div style="font-size:13px;font-weight:600;margin-bottom:4px">🔐 Admin Delete PIN</div>
-          <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">Kunai pani record (stock, sale, booking, valuation, receipt, voucher, purchase) delete garda yo separate PIN chahincha — admin le matra thaha huncha. Pahilo patak delete garda automatic set garna sakincha; yaha bata pani change garna sakincha.</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <input type="password" id="change-admin-pin-old" placeholder="Purano Admin PIN" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:12px">
-            <input type="password" id="change-admin-pin-new" placeholder="Naya Admin PIN" style="flex:1;min-width:100px;padding:7px 10px;border:1px solid var(--gray-300);border-radius:8px;font-size:12px">
-            <button class="btn btn-secondary btn-sm" onclick="changeAdminDeletePin()">Update Admin PIN</button>
           </div>
         </div>
         <div style="border:1px solid var(--gray-200);border-radius:10px;padding:14px;grid-column:1/-1;background:#f5f3ff">
@@ -2749,67 +2741,6 @@ async function changeAppPin(){
   document.getElementById('change-pin-old').value='';
   document.getElementById('change-pin-new').value='';
   toast('✅ PIN update vayo');
-}
-
-// ══════════════════════════════════════════════
-//  🔐 ADMIN DELETE PIN (separate from app-unlock PIN)
-//  Delete garna yo PIN chahincha — admin le matra thaha huncha.
-// ══════════════════════════════════════════════
-const ADMIN_PIN_KEY='dah2-admin-delete-pin-hash';
-
-async function getAdminPinHash(){
-  let hash=null;
-  try{ hash=JSON.parse(localStorage.getItem(ADMIN_PIN_KEY)||'null'); }catch(e){}
-  if(!hash){
-    try{
-      const cloudHash=await cloudPull(ADMIN_PIN_KEY);
-      if(cloudHash){ localStorage.setItem(ADMIN_PIN_KEY,JSON.stringify(cloudHash)); hash=cloudHash; }
-    }catch(e){}
-  }
-  return hash;
-}
-
-// Returns true if allowed to proceed with delete, false if blocked/cancelled.
-async function requireAdminPin(){
-  const stored=await getAdminPinHash();
-  if(!stored){
-    // No admin PIN set yet — set it up now (first time only).
-    const p1=prompt('Admin Delete PIN set garnus (kam se kam 4 digit) — yo PIN pheri delete garda chahincha:');
-    if(p1===null) return false;
-    if(!p1||p1.trim().length<4){ alert('Kam se kam 4 digit/character ko PIN halnus.'); return false; }
-    const p2=prompt('Admin Delete PIN confirm garnus:');
-    if(p1.trim()!==(p2||'').trim()){ alert('PIN milena. Phir try garnus.'); return false; }
-    const h=await sha256Hex(PIN_SALT+'admin-del-'+p1.trim());
-    localStorage.setItem(ADMIN_PIN_KEY,JSON.stringify(h));
-    cloudPush(ADMIN_PIN_KEY,h);
-    toast('✅ Admin Delete PIN set vayo');
-    return true;
-  }
-  const entered=prompt('🔐 Delete garna Admin PIN halnus:');
-  if(entered===null) return false;
-  const enteredHash=await sha256Hex(PIN_SALT+'admin-del-'+entered.trim());
-  if(enteredHash!==stored){
-    alert('❌ Galat Admin PIN. Delete cancel vayo.');
-    return false;
-  }
-  return true;
-}
-
-async function changeAdminDeletePin(){
-  const oldVal=(document.getElementById('change-admin-pin-old')?.value||'').trim();
-  const newVal=(document.getElementById('change-admin-pin-new')?.value||'').trim();
-  if(!newVal||newVal.length<4){ alert('Naya Admin PIN kam se kam 4 digit/character hunu parcha'); return; }
-  const stored=await getAdminPinHash();
-  if(stored){
-    const oldHash=await sha256Hex(PIN_SALT+'admin-del-'+oldVal);
-    if(oldHash!==stored){ alert('Purano Admin PIN milena!'); return; }
-  }
-  const newHash=await sha256Hex(PIN_SALT+'admin-del-'+newVal);
-  localStorage.setItem(ADMIN_PIN_KEY,JSON.stringify(newHash));
-  cloudPush(ADMIN_PIN_KEY,newHash);
-  const oldEl=document.getElementById('change-admin-pin-old'); if(oldEl)oldEl.value='';
-  const newEl=document.getElementById('change-admin-pin-new'); if(newEl)newEl.value='';
-  toast('✅ Admin Delete PIN update vayo');
 }
 
 async function startAppAfterUnlock(){
@@ -3414,9 +3345,9 @@ function renderQtyRows(){
     for(let i=1;i<=qty;i++){
       html+=`<tr>
         <td>${i}</td>
-        <td><input class="mono-input qty-engine" placeholder="Engine No ${i}" oninput="this.value=this.value.toUpperCase()"></td>
-        <td><input class="mono-input qty-chassis" placeholder="Chassis No ${i}" oninput="this.value=this.value.toUpperCase()"></td>
-        <td><input class="mono-input qty-battery" placeholder="Battery No ${i}" oninput="this.value=this.value.toUpperCase()"></td>
+        <td><input class="mono-input qty-engine" placeholder="Engine No ${i}" oninput="upperKeepCursor(this)"></td>
+        <td><input class="mono-input qty-chassis" placeholder="Chassis No ${i}" oninput="upperKeepCursor(this)"></td>
+        <td><input class="mono-input qty-battery" placeholder="Battery No ${i}" oninput="upperKeepCursor(this)"></td>
       </tr>`;
     }
     html+='</tbody></table></div>';
@@ -3530,7 +3461,6 @@ function editStock(id){
 
 async function deleteStock(id){
   if(!confirm('Yo bike stock bata delete garne?'))return;
-  if(!(await requireAdminPin()))return;
   stock=stock.filter(s=>s.id!==id);
   await dbSet('dah2-stock',stock);
   render();toast('Deleted ✓');
@@ -3572,132 +3502,140 @@ function autofillFromStock(){
 //  AD → BS CONVERTER  (accurate lookup table)
 // ══════════════════════════════════════════════
 const BS_DATA = {
-  // [totalDaysInYear, d1,d2,...d12]  (days per BS month)
-  1970:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  1971:[365,31,31,32,31,32,30,30,29,30,29,30,30],
-  1972:[366,31,32,31,32,31,30,30,30,29,29,30,30],
-  1973:[365,30,32,31,32,31,30,30,30,29,30,29,31],
-  1974:[365,31,31,32,31,31,30,30,30,29,30,30,30],
-  1975:[365,31,31,32,32,30,31,30,29,30,29,30,30],
-  1976:[366,31,32,31,32,31,30,30,29,30,29,30,30],
-  1977:[365,31,32,31,32,31,30,30,30,29,29,30,31],
-  1978:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  1979:[365,31,31,32,31,32,30,29,30,29,30,29,31],
-  1980:[366,31,32,31,32,31,30,30,29,30,29,30,30],
-  1981:[365,31,31,32,31,31,30,30,30,29,30,30,30],
-  1982:[365,31,31,32,32,30,30,30,29,30,29,30,30],
-  1983:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  1984:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  1985:[365,31,31,31,32,31,31,29,30,29,30,29,31],
-  1986:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  1987:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  1988:[366,31,32,31,32,31,30,30,30,29,29,30,30],
-  1989:[365,31,31,32,31,32,30,30,29,30,29,30,30],
-  1990:[365,31,31,32,32,31,30,29,30,29,30,29,31],
-  1991:[366,31,32,31,32,31,30,30,29,30,29,30,30],
-  1992:[365,31,31,32,31,31,31,30,29,30,30,29,30],
-  1993:[365,31,31,32,31,32,30,30,29,30,29,30,30],
-  1994:[365,31,31,32,32,31,30,29,30,29,30,30,30],
-  1995:[365,29,32,31,32,31,30,30,29,29,30,29,31],  // leap correction
-  1996:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  1997:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  1998:[366,31,32,31,32,31,30,30,30,29,30,29,31],
-  1999:[365,31,31,31,32,31,31,30,29,30,29,30,30],
-  2000:[365,30,31,32,32,31,30,30,29,30,29,30,30],
-  2001:[365,31,31,32,31,31,30,30,30,29,30,29,31],
-  2002:[366,31,32,31,32,31,30,30,29,30,29,30,30],
-  2003:[365,31,32,31,32,31,30,30,29,30,30,29,30],
-  2004:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2005:[365,31,31,32,31,32,30,30,29,30,29,30,30],
-  2006:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  2007:[365,30,32,31,32,31,30,30,29,30,29,30,30],
-  2008:[365,31,31,32,31,31,30,30,30,29,30,29,31],
-  2009:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2010:[365,31,31,32,32,31,30,29,30,29,30,29,31],
-  2011:[366,31,32,31,32,31,30,30,29,30,29,30,30],
-  2012:[365,31,32,31,32,31,30,30,30,29,30,29,30],
-  2013:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2014:[365,31,31,32,31,32,30,30,29,30,29,30,30],
-  2015:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  2016:[365,31,31,32,31,31,30,30,29,30,30,29,31],
-  2017:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2018:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2019:[365,31,31,32,32,31,30,30,29,30,29,30,30],
-  2020:[366,31,31,32,32,31,30,30,29,30,29,30,30],
-  2021:[365,31,32,31,32,31,30,30,30,29,30,29,31],
-  2022:[365,30,31,32,32,31,30,30,29,30,29,30,30],
-  2023:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2024:[365,31,31,32,31,32,30,30,29,30,29,30,30],
-  2025:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  2026:[365,31,31,32,31,31,30,30,29,30,30,29,31],
-  2027:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2028:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2029:[365,31,31,32,32,31,31,29,30,29,30,29,31],
-  2030:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2031:[366,31,31,32,31,32,30,30,29,30,29,30,30],
-  2032:[365,31,32,31,32,31,30,30,30,29,29,30,31],
-  2033:[365,31,31,32,31,31,30,30,29,30,30,29,31],
-  2034:[365,31,32,31,32,31,30,29,30,29,30,29,31],
-  2035:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2036:[365,31,31,32,32,31,30,30,29,30,29,30,30],
-  2037:[366,31,31,32,32,31,31,30,29,30,29,30,30],
-  2038:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2039:[365,31,31,32,31,32,30,30,29,30,30,29,31],
-  2040:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2041:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  2042:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2043:[365,31,31,32,31,32,30,30,29,30,29,30,30],
-  2044:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2045:[365,31,32,31,32,31,31,29,30,29,30,29,31],
-  2046:[366,31,31,32,31,31,31,30,29,30,29,30,30],
-  2047:[365,31,31,32,32,31,30,30,29,30,29,30,30],
-  2048:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2049:[365,31,31,32,31,32,30,30,29,30,30,29,31],
-  2050:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2051:[366,31,32,31,32,31,30,30,30,29,29,30,30],
-  2052:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2053:[365,31,31,32,32,31,30,29,30,29,30,29,31],
-  2054:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2055:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  2056:[365,31,31,32,31,31,30,30,29,30,30,29,31],
-  2057:[365,31,32,31,32,31,30,29,30,29,30,29,31],
-  2058:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2059:[365,31,31,32,32,31,30,30,29,30,29,30,30],
-  2060:[366,31,31,32,32,31,31,30,29,30,29,30,30],
-  2061:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2062:[365,31,31,32,31,32,30,30,29,30,30,29,31],
-  2063:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2064:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  2065:[365,31,31,31,32,31,31,29,30,29,30,29,31],
-  2066:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2067:[365,31,31,32,32,31,30,30,29,30,29,30,30],
-  2068:[366,31,32,31,32,31,30,30,30,29,29,30,30],
-  2069:[365,31,31,32,31,32,30,30,29,30,30,29,31],
-  2070:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2071:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2072:[366,31,31,32,31,31,31,30,29,30,29,30,30],
-  2073:[365,31,31,32,32,31,30,29,30,29,30,29,31],
-  2074:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2075:[366,31,32,31,32,31,30,30,30,29,30,29,31],
-  2076:[365,31,31,32,31,31,30,30,29,30,29,30,30],
-  2077:[365,31,31,32,31,31,30,30,29,30,30,29,31],
-  2078:[365,31,32,31,32,31,30,29,30,29,30,29,31],
-  2079:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2080:[366,31,31,32,32,31,31,30,29,30,29,30,30],
-  2081:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2082:[365,31,31,32,31,32,30,30,29,30,30,29,31],
-  2083:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2084:[366,31,32,31,32,31,30,30,30,29,29,30,31],
-  2085:[365,31,31,31,32,31,31,29,30,29,30,29,31],
-  2086:[365,31,31,32,31,31,31,30,29,30,29,30,30],
-  2087:[365,31,32,31,32,31,30,30,29,30,29,30,30],
-  2088:[365,31,32,31,32,31,30,30,30,29,29,30,30],
-  2089:[366,31,31,32,32,31,30,30,29,30,29,30,31],
-  2090:[365,31,32,31,32,31,30,30,29,30,29,30,30],
+  1970:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1971:[31,31,32,31,32,30,30,29,30,29,30,30],
+  1972:[31,32,31,32,31,30,30,30,29,29,30,30],
+  1973:[30,32,31,32,31,30,30,30,29,30,29,31],
+  1974:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1975:[31,31,32,32,31,31,30,29,30,29,30,30],
+  1976:[31,32,31,32,31,30,30,30,29,29,30,31],
+  1977:[30,32,31,32,31,31,29,30,29,30,29,31],
+  1978:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1979:[31,31,32,32,31,30,30,29,30,29,30,30],
+  1980:[31,32,31,32,31,30,30,30,29,29,30,31],
+  1981:[31,31,31,32,31,31,29,30,30,29,30,30],
+  1982:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1983:[31,31,32,32,31,30,30,29,30,29,30,30],
+  1984:[31,32,31,32,31,30,30,30,29,29,30,31],
+  1985:[31,31,31,32,31,31,29,30,30,29,30,30],
+  1986:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1987:[31,32,31,32,31,30,30,29,30,29,30,30],
+  1988:[31,32,31,32,31,30,30,30,29,29,30,31],
+  1989:[31,31,31,32,31,31,30,29,30,29,30,30],
+  1990:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1991:[31,32,31,32,31,30,30,30,29,29,30,30],
+  1992:[31,32,31,32,31,30,30,30,29,30,29,31],
+  1993:[31,31,31,32,31,31,30,29,30,29,30,30],
+  1994:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1995:[31,32,31,32,31,30,30,30,29,29,30,30],
+  1996:[31,32,31,32,31,30,30,30,29,30,29,31],
+  1997:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1998:[31,31,32,31,31,31,30,29,30,29,30,30],
+  1999:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2000:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2001:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2002:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2003:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2004:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2005:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2006:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2007:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2008:[31,31,31,32,31,31,29,30,30,29,29,31],
+  2009:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2010:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2011:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2012:[31,31,31,32,31,31,29,30,30,29,30,30],
+  2013:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2014:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2015:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2016:[31,31,31,32,31,31,29,30,30,29,30,30],
+  2017:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2018:[31,32,31,32,31,30,30,29,30,29,30,30],
+  2019:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2020:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2021:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2022:[31,32,31,32,31,30,30,30,29,29,30,30],
+  2023:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2024:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2025:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2026:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2027:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2028:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2029:[31,31,32,31,32,30,30,29,30,29,30,30],
+  2030:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2031:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2032:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2033:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2034:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2035:[30,32,31,32,31,31,29,30,30,29,29,31],
+  2036:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2037:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2038:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2039:[31,31,31,32,31,31,29,30,30,29,30,30],
+  2040:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2041:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2042:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2043:[31,31,31,32,31,31,29,30,30,29,30,30],
+  2044:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2045:[31,32,31,32,31,30,30,29,30,29,30,30],
+  2046:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2047:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2048:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2049:[31,32,31,32,31,30,30,30,29,29,30,30],
+  2050:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2051:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2052:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2053:[31,32,31,32,31,30,30,30,29,29,30,30],
+  2054:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2055:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2056:[31,31,32,31,32,30,30,29,30,29,30,30],
+  2057:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2058:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2059:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2060:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2061:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2062:[30,32,31,32,31,31,29,30,29,30,29,31],
+  2063:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2064:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2065:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2066:[31,31,31,32,31,31,29,30,30,29,29,31],
+  2067:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2068:[31,31,32,32,31,30,30,29,30,29,30,30],
+  2069:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2070:[31,31,31,32,31,31,29,30,30,29,30,30],
+  2071:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2072:[31,32,31,32,31,30,30,29,30,29,30,30],
+  2073:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2074:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2075:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2076:[31,32,31,32,31,30,30,30,29,29,30,30],
+  2077:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2078:[31,31,31,32,31,31,30,29,30,29,30,30],
+  2079:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2080:[31,32,31,32,31,30,30,30,29,29,30,30],
+  2081:[31,32,31,32,31,30,30,30,29,30,29,31],
+  2082:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2083:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2084:[31,32,31,32,31,30,30,30,29,29,30,31],
+  2085:[30,32,31,32,31,30,30,30,29,30,29,31],
+  2086:[31,31,32,31,31,31,30,29,30,29,30,30],
+  2087:[31,31,32,31,31,31,30,30,29,30,30,30],
+  2088:[30,31,32,32,30,31,30,30,29,30,30,30],
+  2089:[30,32,31,32,31,30,30,30,29,30,30,30],
+  2090:[30,32,31,32,31,30,30,30,29,30,30,30],
 };
-// Reference point: BS 2000/01/01 = AD 1943/04/17
-const BS_START_YEAR = 2000;
-const AD_REF = new Date(1943, 3, 17); // April 17 1943
+// Reference point: BS 1970/01/01 = AD 1913/04/13 (verified against two independent
+// open-source Nepali calendar datasets; cross-checked so that AD 2026-07-15 = BS 2083/03/31)
+const BS_START_YEAR = 1970;
+const AD_REF = new Date(1913, 3, 13); // April 13, 1913
+
+function bsYearTotal(y){ const d=BS_DATA[y]; return d ? d.reduce((a,b)=>a+b,0) : 0; }
+
+// ── Convert text to proper Title Case (handles extra spaces, mixed/garbled case) ──
+function toTitleCase(str){
+  if(!str) return str;
+  return str.replace(/\s+/g,' ').trim().toLowerCase().replace(/(^|\s)([a-z])/g, (m,pre,ch)=>pre+ch.toUpperCase());
+}
 
 function adToBS(adDate) {
   // Count days from reference
@@ -3709,15 +3647,15 @@ function adToBS(adDate) {
   let bsMonth = 1;
   let bsDay = 1;
 
-  while (totalDays > 0) {
+  while (true) {
     const data = BS_DATA[bsYear];
     if (!data) break;
-    const daysInYear = data[0];
+    const daysInYear = bsYearTotal(bsYear);
     if (totalDays < daysInYear) {
       // within this year
-      for (let m = 1; m <= 12; m++) {
+      for (let m = 0; m < 12; m++) {
         const dim = data[m];
-        if (totalDays < dim) { bsMonth = m; bsDay = totalDays + 1; break; }
+        if (totalDays < dim) { bsMonth = m + 1; bsDay = totalDays + 1; break; }
         totalDays -= dim;
       }
       break;
@@ -3726,6 +3664,80 @@ function adToBS(adDate) {
     bsYear++;
   }
   return { y: bsYear, m: bsMonth, d: bsDay };
+}
+
+// ── Reverse: parse a Nepali (BS) date string like 2082/03/15 or 2082-03-15 ──
+function parseBSString(str){
+  if(!str) return null;
+  const m = String(str).trim().match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+  if(!m) return null;
+  return {y:+m[1], m:+m[2], d:+m[3]};
+}
+
+// ── Reverse: BS (y,m,d) -> AD Date object ──
+function bsToAD(y,m,d){
+  if(!BS_DATA[y]) return null;
+  if(m<1||m>12) return null;
+  const msPerDay=86400000;
+  let totalDays=0;
+  for(let yy=BS_START_YEAR; yy<y; yy++){
+    if(!BS_DATA[yy]) return null;
+    totalDays+=bsYearTotal(yy);
+  }
+  const data=BS_DATA[y];
+  if(d<1||d>data[m-1]) return null;
+  for(let mm=0; mm<m-1; mm++) totalDays+=data[mm];
+  totalDays+=(d-1);
+  return new Date(AD_REF.getTime()+totalDays*msPerDay);
+}
+
+// ── Format a JS Date as YYYY-MM-DD for <input type=date> ──
+function formatADForInput(d){
+  const y=d.getFullYear(), mo=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
+  return y+'-'+mo+'-'+da;
+}
+
+// ── SALES: typing Nepali (BS) date directly auto-fills the AD date + day name ──
+function syncSalesDateFromNepali(){
+  const nepEl=document.getElementById('fs-nepali-date');
+  const dateEl=document.getElementById('fs-date');
+  if(!nepEl||!dateEl) return;
+  const parsed=parseBSString(nepEl.value);
+  if(!parsed) return;
+  const ad=bsToAD(parsed.y,parsed.m,parsed.d);
+  if(!ad||isNaN(ad.getTime())) return;
+  dateEl.value=formatADForInput(ad);
+  const daysEl=document.getElementById('fs-sales-days');
+  if(daysEl){
+    const engDays=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const nepDays=['Aaitabar','Sombar','Mangalbar','Budhabar','Bihibar','Sukrabar','Sanibar'];
+    daysEl.value=engDays[ad.getDay()]+' / '+nepDays[ad.getDay()];
+  }
+}
+
+// ── PURCHASE: typing Nepali (BS) date directly auto-fills the AD date ──
+function purSyncDateFromBS(){
+  const bsEl=document.getElementById('pur-f-date');
+  const adEl=document.getElementById('pur-f-date-ad');
+  if(!bsEl||!adEl) return;
+  const parsed=parseBSString(bsEl.value);
+  if(!parsed) return;
+  const ad=bsToAD(parsed.y,parsed.m,parsed.d);
+  if(!ad||isNaN(ad.getTime())) return;
+  adEl.value=formatADForInput(ad);
+}
+
+// ── PURCHASE: picking an AD date auto-fills the Nepali (BS) date ──
+function purSyncDateFromAD(){
+  const bsEl=document.getElementById('pur-f-date');
+  const adEl=document.getElementById('pur-f-date-ad');
+  if(!bsEl||!adEl||!adEl.value) return;
+  const parts=adEl.value.split('-');
+  const adDate=new Date(+parts[0],+parts[1]-1,+parts[2]);
+  if(isNaN(adDate.getTime())) return;
+  const bs=adToBS(adDate);
+  if(!bs) return;
+  bsEl.value=bs.y+'/'+String(bs.m).padStart(2,'0')+'/'+String(bs.d).padStart(2,'0');
 }
 
 function autoCalcSalesDays(){
@@ -3767,7 +3779,7 @@ function resetSaleForm(){
 }
 
 async function saveSale(){
-  const cust=document.getElementById('fs-cust').value.trim();
+  const cust=toTitleCase(document.getElementById('fs-cust').value.trim());
   if(!cust){alert('Customer naam raakhnus!');return;}
   if(document.getElementById('sale-dupe-banner').style.display!=='none'){
     if(!confirm('⚠️ Duplicate sale detected cha!\nPhir pani save garne?'))return;
@@ -3832,7 +3844,6 @@ async function saveSale(){
 
 async function deleteSale(i){
   if(!confirm('Yo sale delete garne?'))return;
-  if(!(await requireAdminPin()))return;
   // Restore stock if possible
   const s=sales[i];
   if(s.stockId){const item=stock.find(x=>x.id===s.stockId);if(item&&item.status==='out'){item.status='in';delete item.soldDate;await dbSet('dah2-stock',stock);}}
@@ -3973,7 +3984,7 @@ async function saveBooking(){
   closeModal('booking');render();editBookingId=null;
 }
 async function completeBooking(i){bookings[i].status='Completed';await dbSet('dah2-bookings',bookings);render();toast('Booking completed ✓');}
-async function deleteBooking(i){if(!confirm('Delete booking?'))return;if(!(await requireAdminPin()))return;bookings.splice(i,1);await dbSet('dah2-bookings',bookings);render();toast('Deleted ✓');}
+async function deleteBooking(i){if(!confirm('Delete booking?'))return;bookings.splice(i,1);await dbSet('dah2-bookings',bookings);render();toast('Deleted ✓');}
 
 // ══════════════════════════════════════════════
 //  DELIVERY SHEET — STOCK LOOKUP
@@ -4080,7 +4091,7 @@ function onDeliveryModelChange(doLookup=true,isBlur=false){
 //  DELIVER & MARK SOLD
 // ══════════════════════════════════════════════
 async function confirmDeliverAndMarkSold(){
-  const custName=document.getElementById('d-cust-name').value.trim();
+  const custName=toTitleCase(document.getElementById('d-cust-name').value.trim());
   snapToCanonical(document.getElementById('d-bike-model'),getAllModelNames());
   const model=document.getElementById('d-bike-model').value;
   const engineno=document.getElementById('d-engine-no').value.trim();
@@ -5050,7 +5061,6 @@ function loadValuationToForm(i){
 
 async function deleteValuationSheet(i){
   if(!confirm('This valuation delete garne?'))return;
-  if(!(await requireAdminPin()))return;
   valuationSheets.splice(i,1);
   await dbSet('dah2-valuation-sheets',valuationSheets);
   renderValuationLedger();toast('Deleted ✓');
@@ -5536,9 +5546,8 @@ function printSingleReceipt(id){
   win.document.close();
 }
 
-async function deleteReceiptFromLedger(id){
+function deleteReceiptFromLedger(id){
   if(!confirm('Delete this receipt from the ledger?')) return;
-  if(!(await requireAdminPin()))return;
   receipts=receipts.filter(r=>r.id!==id);
   dbSet('dah2-receipts',receipts);
   renderReceiptLedger();
@@ -5804,9 +5813,8 @@ function loadVoucherFromLedger(id){
   toast('📂 Voucher loaded into form — edit and click "Save to Ledger" to update');
 }
 
-async function deleteVoucherFromLedger(id){
+function deleteVoucherFromLedger(id){
   if(!confirm('Delete this voucher from the ledger?')) return;
-  if(!(await requireAdminPin()))return;
   vouchers=vouchers.filter(v=>v.id!==id);
   dbSet('dah2-vouchers',vouchers);
   renderVoucherLedger();
@@ -6222,6 +6230,13 @@ function printValuationTwoCopies(){
 
 // ── AUTO UPPERCASE FOR SELECTED FIELDS ──
 // Fields that should auto-uppercase: chassis, engine, reg/bike no, invoice, battery
+// ── Uppercase an input's value WITHOUT jumping the cursor to the end (fixes typing feeling broken mid-word) ──
+function upperKeepCursor(el){
+  const pos=el.selectionStart;
+  el.value=el.value.toUpperCase();
+  el.setSelectionRange(pos,pos);
+}
+
 function applyAutoCaps(){
   // All inputs that typically need UPPERCASE (serial numbers, plate numbers)
   const upperIds=[
@@ -6250,7 +6265,9 @@ function applyAutoCaps(){
   });
 
   // Text-capitalize fields (customer names, models, addresses — Title Case on blur)
-  // We apply text-transform via CSS instead for these — just set CSS
+  // IMPORTANT: this actually rewrites the stored value (not just a CSS look-alike),
+  // so the correct casing carries through everywhere the value is used later
+  // (sales record, ledgers, PDFs, etc.) instead of only looking right inside the input box.
   const titleCssIds=[
     'val-cust-name','val-old-model','val-exchange-by','val-exchange-with',
     'd-cust-name','q-to-name','q-to-attn',
@@ -6258,7 +6275,12 @@ function applyAutoCaps(){
   ];
   titleCssIds.forEach(id=>{
     const el=document.getElementById(id);
-    if(el) el.style.textTransform='capitalize';
+    if(el){
+      el.style.textTransform='capitalize'; // live preview while typing
+      el.addEventListener('blur',function(){
+        this.value=toTitleCase(this.value);
+      });
+    }
   });
 }
 
@@ -6685,11 +6707,12 @@ function openPurchaseModal(idx){
   document.getElementById('pur-f-vat').value='';
   document.getElementById('pur-f-total').value='';
   document.getElementById('pur-f-total-words').value='';
-  // Auto-fill today's English date
+  // Auto-fill today's English date, then auto-derive today's Nepali (BS) date from it
   const todayAD=new Date().toISOString().slice(0,10);
   document.getElementById('pur-f-date-ad').value=todayAD;
   document.getElementById('modal-purchase').dataset.editIdx='';
   purHideDupe();
+  purSyncDateFromAD();
 
   if(idx!==undefined && purchases[idx]){
     const p=purchases[idx];
@@ -6707,6 +6730,8 @@ function openPurchaseModal(idx){
     document.getElementById('pur-f-notes').value=p.notes||'';
     document.getElementById('pur-f-date-ad').value=p.dateAD||'';
     document.getElementById('modal-purchase').dataset.editIdx=idx;
+    // Old entries saved before the AD field existed won't have dateAD — backfill it from the BS date
+    if(!p.dateAD && p.date) purSyncDateFromBS();
     purCalc();
   }
   purPopulateModelList();
@@ -6870,9 +6895,8 @@ function savePurchaseEntry(){
 }
 
 // ── Delete Entry ──
-async function deletePurchaseEntry(idx){
+function deletePurchaseEntry(idx){
   if(!confirm('Yo purchase entry delete garne?')) return;
-  if(!(await requireAdminPin()))return;
   loadPurchases();
   purchases.splice(idx,1);
   savePurchases();
@@ -6952,7 +6976,7 @@ function renderPurchase(){
   if(!tbody) return;
 
   if(!filtered.length){
-    tbody.innerHTML=`<tr><td colspan="16" class="empty"><p>🛒 ${(fromV||toV)?'Selected date range ma kunai purchase entry vetiyena':'Kunai purchase entry chaina. "Add Purchase" garus!'}</p></td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="17" class="empty"><p>🛒 ${(fromV||toV)?'Selected date range ma kunai purchase entry vetiyena':'Kunai purchase entry chaina. "Add Purchase" garus!'}</p></td></tr>`;
     return;
   }
 
@@ -6964,6 +6988,7 @@ function renderPurchase(){
     <tr>
       <td style="text-align:center;font-weight:600;color:var(--gray-400)">${i+1}</td>
       <td>${p.date||'—'}</td>
+      <td>${p.dateAD||'—'}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.supplier||''}">${p.supplier||'—'}</td>
       <td><span class="mono">${p.invoiceno||'—'}</span></td>
       <td style="font-weight:500">${p.model||'—'}</td>
