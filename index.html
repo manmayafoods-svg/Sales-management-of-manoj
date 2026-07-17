@@ -754,6 +754,11 @@ window.supabase = createClient(
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V5a2 2 0 0 1 2-2h10l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/><path d="M14 3v4h4"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="9" x2="10" y2="9"/></svg>
       Valuation Ledger
     </div>
+    <div class="nav-label" style="margin-top:16px">Accounts</div>
+    <div class="nav-item" onclick="showPage('payable-ledger',this)" data-page="payable-ledger">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Payable Ledger
+    </div>
     <div class="nav-label" style="margin-top:16px">Reports</div>
     <div class="nav-item" onclick="showPage('dashboard',this)" data-page="dashboard">
       <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
@@ -882,6 +887,54 @@ window.supabase = createClient(
               </tr>
             </thead>
             <tbody id="pur-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAYABLE LEDGER PAGE (Customer Baaki / Credit Tracker) ══ -->
+    <div class="page-section" id="page-payable-ledger">
+      <div id="pay-metrics" class="metrics-grid" style="margin-bottom:18px"></div>
+      <div id="pay-alerts-container"></div>
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-title">🧾 Payable Ledger — Customer Baaki (Credit Tracker)</span>
+          <div class="table-controls" style="gap:8px;flex-wrap:wrap">
+            <div class="search-box">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input id="pay-search" placeholder="Search customer, phone, invoice, model..." oninput="renderPayableLedger()">
+            </div>
+            <select id="pay-status-filter" onchange="renderPayableLedger()" style="padding:6px 10px;font-size:12px;border:1px solid var(--gray-300);border-radius:6px">
+              <option value="">All Status</option>
+              <option value="Overdue">Overdue</option>
+              <option value="Due Soon">Due Soon</option>
+              <option value="Active">Active</option>
+              <option value="Paid">Paid Off</option>
+            </select>
+            <button class="btn btn-secondary btn-sm" onclick="exportPayableXLSX()">📤 Export Excel</button>
+            <button class="btn btn-primary btn-sm" onclick="openPayableModal()">➕ Add Credit Entry</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>S.N.</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Invoice / Model</th>
+                <th>Sale Date</th>
+                <th>Total (NPR)</th>
+                <th>Paid (NPR)</th>
+                <th>Balance (NPR)</th>
+                <th>Credit Period</th>
+                <th>Due Date</th>
+                <th>Status</th>
+                <th>Follow-up</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="pay-body"></tbody>
           </table>
         </div>
       </div>
@@ -1567,6 +1620,105 @@ window.supabase = createClient(
         <div class="modal-foot">
           <button class="btn btn-secondary" onclick="closeModal('purchase-print')">Close</button>
           <button class="btn btn-red" onclick="window.print()">🖨️ Print</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAYABLE LEDGER — ADD/EDIT ENTRY MODAL ══ -->
+    <div class="overlay" id="modal-payable">
+      <div class="modal" style="max-width:640px">
+        <div class="modal-head">
+          <h2 id="pay-modal-title">➕ नयाँ Credit Entry (Customer Baaki)</h2>
+          <button class="modal-close" onclick="closeModal('payable')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group form-full">
+              <label>Load from Sales Record (optional)</label>
+              <select id="pay-f-sale-link" onchange="paySyncFromSale()">
+                <option value="">-- Manually enter details below --</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Customer Name *</label><input id="pay-f-cust" placeholder="Customer ko naam"></div>
+            <div class="form-group"><label>Phone</label><input id="pay-f-phone" placeholder="98XXXXXXXX"></div>
+            <div class="form-group form-full"><label>Address</label><input id="pay-f-addr" placeholder="Address"></div>
+            <div class="form-group"><label>Invoice No.</label><input id="pay-f-invoiceno" class="mono-input" placeholder="INV-001"></div>
+            <div class="form-group"><label>Bike Model</label><input id="pay-f-model" placeholder="Bike Model"></div>
+            <div class="form-group"><label>Reg. / Chassis No.</label><input id="pay-f-chassisno" class="mono-input" placeholder="CHASSIS NUMBER" oninput="upperKeepCursor(this)"></div>
+            <div class="form-group"><label>Sale Date (AD) *</label><input id="pay-f-saledate" type="date" onchange="payCalcDueDate()"></div>
+            <hr class="section-divider">
+            <div class="section-sub">💰 Amount & Credit Terms</div>
+            <div class="form-group"><label>Total Sale Amount (NPR) *</label><input id="pay-f-total" type="number" min="0" placeholder="0" oninput="payCalcDueDate()"></div>
+            <div class="form-group"><label>Advance / Down Payment (NPR)</label><input id="pay-f-advance" type="number" min="0" value="0" oninput="payCalcDueDate()"></div>
+            <div class="form-group"><label>Credit Period (Days) *</label><input id="pay-f-creditdays" type="number" min="0" value="30" oninput="payCalcDueDate()"></div>
+            <div class="form-group"><label>Due Date (Auto)</label><input id="pay-f-duedate" readonly style="background:var(--gray-50);color:var(--gray-600);font-weight:600"></div>
+            <div class="form-group form-full"><label>Remaining Balance (Auto)</label><input id="pay-f-balance" readonly style="background:var(--amber-light);color:#92400e;font-weight:700;font-size:15px"></div>
+            <div class="form-group form-full"><label>Notes</label><textarea id="pay-f-notes" placeholder="Optional notes..." rows="2"></textarea></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" onclick="closeModal('payable')">Cancel</button>
+          <button class="btn btn-primary" onclick="savePayableEntry()">💾 Save Entry</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAYABLE LEDGER — MANAGE (PAYMENTS / PDC / FOLLOW-UP) MODAL ══ -->
+    <div class="overlay" id="modal-payable-manage">
+      <div class="modal" style="max-width:720px">
+        <div class="modal-head">
+          <h2 id="paym-title">🧾 Baaki Details</h2>
+          <button class="modal-close" onclick="closeModal('payable-manage')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="paym-summary" class="metrics-grid" style="margin-bottom:16px"></div>
+
+          <div class="section-sub" style="margin-bottom:8px">💵 Add Payment</div>
+          <div class="form-grid" style="margin-bottom:10px">
+            <div class="form-group"><label>Date</label><input id="paym-pay-date" type="date"></div>
+            <div class="form-group"><label>Amount (NPR)</label><input id="paym-pay-amount" type="number" min="0" placeholder="0"></div>
+            <div class="form-group"><label>Mode</label>
+              <select id="paym-pay-mode" onchange="paymTogglePdcFields()">
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cheque-Cleared">Cheque (Cleared Now)</option>
+                <option value="Cheque-PDC">Post-Dated Cheque (PDC)</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Note</label><input id="paym-pay-note" placeholder="Optional"></div>
+            <div id="paym-pdc-fields" style="display:none;grid-column:1/-1" class="form-full form-grid">
+              <div class="form-group"><label>Cheque No.</label><input id="paym-cheque-no" class="mono-input" placeholder="Cheque No."></div>
+              <div class="form-group"><label>Bank</label><input id="paym-cheque-bank" placeholder="Bank Name"></div>
+              <div class="form-group"><label>Cheque Date</label><input id="paym-cheque-date" type="date"></div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="margin-bottom:16px" onclick="paymAddPayment()">➕ Add Payment</button>
+
+          <div class="table-card" style="margin-bottom:16px">
+            <div class="table-header"><span class="table-title" style="font-size:13px">Payment History</span></div>
+            <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Mode</th><th>Cheque/Note</th><th></th></tr></thead><tbody id="paym-payments-body"></tbody></table></div>
+          </div>
+
+          <div class="table-card" style="margin-bottom:16px">
+            <div class="table-header"><span class="table-title" style="font-size:13px">🏦 Post-Dated Cheques (PDC)</span></div>
+            <div class="tbl-wrap"><table><thead><tr><th>Cheque No.</th><th>Bank</th><th>Cheque Date</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody id="paym-pdc-body"></tbody></table></div>
+          </div>
+
+          <div class="section-sub" style="margin-bottom:8px">📞 Follow-Up / Reminder</div>
+          <div class="form-grid" style="margin-bottom:10px">
+            <div class="form-group form-full"><label>Follow-up Note</label><textarea id="paym-fu-note" rows="2" placeholder="e.g. Phone gareko, Asar 20 samma tirchhu bhaneko"></textarea></div>
+            <div class="form-group"><label>Next Follow-up Date</label><input id="paym-fu-next" type="date"></div>
+          </div>
+          <button class="btn btn-secondary btn-sm" style="margin-bottom:16px" onclick="paymAddFollowup()">➕ Add Follow-up</button>
+
+          <div class="table-card">
+            <div class="table-header"><span class="table-title" style="font-size:13px">Follow-up History</span></div>
+            <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Note</th><th>Next Follow-up</th></tr></thead><tbody id="paym-fu-body"></tbody></table></div>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="btn btn-secondary" onclick="closeModal('payable-manage')">Close</button>
+          <button class="btn btn-red" onclick="printPayableStatement()">🖨️ Print Statement</button>
         </div>
       </div>
     </div>
@@ -7858,6 +8010,560 @@ setTimeout(()=>{
   }); // bubble phase — runs after each field's own autofill keydown handler, which fires first on the target
 })();
 // ══ END ENTER-KEY AUTO-ADVANCE ══
+
+// ══════════════════════════════════════════════════════════════
+// ██████  PAYABLE LEDGER MODULE (Customer Baaki / Credit Tracker)  ██████
+// ══════════════════════════════════════════════════════════════
+
+let payables = [];
+let payCurrentIdx = null;   // index being edited in modal-payable (null = new)
+let payManageIdx = null;    // index open in modal-payable-manage
+const PAY_KEY = 'dah2-payable-ledger';
+
+function loadPayables(){
+  try{
+    const raw = localStorage.getItem(PAY_KEY);
+    payables = raw ? JSON.parse(raw) : [];
+  }catch(e){ payables=[]; }
+}
+function savePayables(){
+  localStorage.setItem(PAY_KEY, JSON.stringify(payables));
+  if(typeof cloudPush==='function') cloudPush(PAY_KEY, payables);
+}
+
+// ── date helpers ──
+function payAddDays(dateStr, days){
+  if(!dateStr) return '';
+  const d=new Date(dateStr+'T00:00:00');
+  d.setDate(d.getDate()+(parseInt(days)||0));
+  return d.toISOString().slice(0,10);
+}
+function payDaysBetween(a,b){
+  const da=new Date(a+'T00:00:00'), db=new Date(b+'T00:00:00');
+  return Math.round((db-da)/86400000);
+}
+function payFmtDate(d){ return d||'—'; }
+
+// ── computed balance / status ──
+function payComputeBalance(r){
+  const paid=(Number(r.advance)||0)+(r.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  return (Number(r.totalAmount)||0)-paid;
+}
+function payComputePaid(r){
+  return (Number(r.advance)||0)+(r.payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0);
+}
+function payComputeStatus(r){
+  const balance=payComputeBalance(r);
+  const t=today();
+  let status='Active', cls='badge-blue', daysInfo='';
+  if(balance<=0){
+    status='Paid'; cls='badge-green'; daysInfo='Settled ✓';
+  } else if(r.dueDateAD && r.dueDateAD<t){
+    status='Overdue'; cls='badge-red';
+    daysInfo=payDaysBetween(r.dueDateAD,t)+' din overdue';
+  } else if(r.dueDateAD){
+    const daysLeft=payDaysBetween(t,r.dueDateAD);
+    if(daysLeft<=3){ status='Due Soon'; cls='badge-amber'; daysInfo=daysLeft<=0?'Aaja due':daysLeft+' din baki'; }
+    else { status='Active'; cls='badge-blue'; daysInfo=daysLeft+' din baki'; }
+  }
+  return {balance,status,cls,daysInfo};
+}
+function payLatestFollowup(r){
+  if(!r.followups || !r.followups.length) return null;
+  return r.followups[r.followups.length-1];
+}
+
+// ── ADD/EDIT ENTRY MODAL ──
+function payPopulateSaleLink(){
+  const sel=document.getElementById('pay-f-sale-link');
+  if(!sel) return;
+  let opts='<option value="">-- Manually enter details below --</option>';
+  (sales||[]).forEach((s,i)=>{
+    opts+=`<option value="${i}">${(s.cust||'').replace(/"/g,'')} — ${(s.model||'').replace(/"/g,'')} — ${s.date||''} — NPR ${fmt(s.amt||0)}</option>`;
+  });
+  sel.innerHTML=opts;
+}
+function paySyncFromSale(){
+  const sel=document.getElementById('pay-f-sale-link');
+  const idx=parseInt(sel.value);
+  if(isNaN(idx)) return;
+  const s=sales[idx];
+  if(!s) return;
+  document.getElementById('pay-f-cust').value=s.cust||'';
+  document.getElementById('pay-f-phone').value=s.phone||'';
+  document.getElementById('pay-f-addr').value=s.addr||'';
+  document.getElementById('pay-f-invoiceno').value=s.invoiceno||'';
+  document.getElementById('pay-f-model').value=s.model||'';
+  document.getElementById('pay-f-chassisno').value=s.chassisno||s.bikeno||'';
+  document.getElementById('pay-f-saledate').value=s.date||'';
+  document.getElementById('pay-f-total').value=s.amt||0;
+  payCalcDueDate();
+}
+function payCalcDueDate(){
+  const saleDate=document.getElementById('pay-f-saledate').value;
+  const days=parseInt(document.getElementById('pay-f-creditdays').value)||0;
+  const due=saleDate?payAddDays(saleDate,days):'';
+  document.getElementById('pay-f-duedate').value=due;
+  const total=parseFloat(document.getElementById('pay-f-total').value)||0;
+  const advance=parseFloat(document.getElementById('pay-f-advance').value)||0;
+  let existingPaid=0;
+  if(payCurrentIdx!==null && payables[payCurrentIdx]){
+    existingPaid=(payables[payCurrentIdx].payments||[]).reduce((s,p)=>s+(Number(p.amount)||0),0);
+  }
+  const balance=total-advance-existingPaid;
+  document.getElementById('pay-f-balance').value='NPR '+fmt(balance);
+}
+function resetPayableForm(){
+  ['pay-f-cust','pay-f-phone','pay-f-addr','pay-f-invoiceno','pay-f-model','pay-f-chassisno','pay-f-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('pay-f-saledate').value=today();
+  document.getElementById('pay-f-total').value='';
+  document.getElementById('pay-f-advance').value='0';
+  document.getElementById('pay-f-creditdays').value='30';
+  document.getElementById('pay-f-duedate').value='';
+  document.getElementById('pay-f-balance').value='';
+  document.getElementById('pay-f-sale-link').value='';
+}
+function openPayableModal(idx){
+  loadPayables();
+  payPopulateSaleLink();
+  if(typeof idx==='number' && payables[idx]){
+    payCurrentIdx=idx;
+    const r=payables[idx];
+    document.getElementById('pay-modal-title').textContent='✏️ Edit Credit Entry';
+    document.getElementById('pay-f-sale-link').value='';
+    document.getElementById('pay-f-cust').value=r.custName||'';
+    document.getElementById('pay-f-phone').value=r.phone||'';
+    document.getElementById('pay-f-addr').value=r.address||'';
+    document.getElementById('pay-f-invoiceno').value=r.invoiceNo||'';
+    document.getElementById('pay-f-model').value=r.model||'';
+    document.getElementById('pay-f-chassisno').value=r.chassisno||'';
+    document.getElementById('pay-f-saledate').value=r.saleDateAD||'';
+    document.getElementById('pay-f-total').value=r.totalAmount||0;
+    document.getElementById('pay-f-advance').value=r.advance||0;
+    document.getElementById('pay-f-creditdays').value=r.creditDays||30;
+    document.getElementById('pay-f-notes').value=r.notes||'';
+  } else {
+    payCurrentIdx=null;
+    document.getElementById('pay-modal-title').textContent='➕ नयाँ Credit Entry (Customer Baaki)';
+    resetPayableForm();
+  }
+  payCalcDueDate();
+  openModal('payable');
+}
+function savePayableEntry(){
+  const custName=toTitleCase(document.getElementById('pay-f-cust').value.trim());
+  if(!custName){alert('Customer naam raakhnus!');return;}
+  const totalAmount=parseFloat(document.getElementById('pay-f-total').value)||0;
+  if(totalAmount<=0){alert('Total sale amount raakhnus!');return;}
+  const saleDateAD=document.getElementById('pay-f-saledate').value||today();
+  const creditDays=parseInt(document.getElementById('pay-f-creditdays').value)||0;
+  const rec={
+    custName,
+    phone:document.getElementById('pay-f-phone').value.trim(),
+    address:document.getElementById('pay-f-addr').value.trim(),
+    invoiceNo:document.getElementById('pay-f-invoiceno').value.trim(),
+    model:document.getElementById('pay-f-model').value.trim(),
+    chassisno:document.getElementById('pay-f-chassisno').value.trim(),
+    saleDateAD,
+    totalAmount,
+    advance:parseFloat(document.getElementById('pay-f-advance').value)||0,
+    creditDays,
+    dueDateAD:payAddDays(saleDateAD,creditDays),
+    notes:document.getElementById('pay-f-notes').value.trim()
+  };
+  if(payCurrentIdx!==null && payables[payCurrentIdx]){
+    const existing=payables[payCurrentIdx];
+    payables[payCurrentIdx]={...existing,...rec};
+    toast('Credit entry updated ✓');
+  } else {
+    rec.id=Date.now()+Math.floor(Math.random()*1000);
+    rec.payments=[]; rec.pdc=[]; rec.followups=[];
+    rec.createdAt=new Date().toISOString();
+    payables.push(rec);
+    toast('Credit entry saved ✓');
+  }
+  savePayables();
+  closeModal('payable');
+  payCurrentIdx=null;
+  renderPayableLedger(); renderPayableMetrics(); renderPayableAlerts();
+}
+function deletePayableEntry(idx){
+  if(!confirm('Yo credit entry delete garne? Payment/PDC/follow-up history pani hatchha.'))return;
+  payables.splice(idx,1);
+  savePayables();
+  renderPayableLedger(); renderPayableMetrics(); renderPayableAlerts();
+  toast('Entry deleted');
+}
+
+// ── MAIN LEDGER TABLE ──
+function renderPayableLedger(){
+  loadPayables();
+  const body=document.getElementById('pay-body');
+  if(!body) return;
+  const q=(document.getElementById('pay-search')?.value||'').toLowerCase();
+  const statusFilter=document.getElementById('pay-status-filter')?.value||'';
+  let rows=payables.map((r,i)=>({r,i,...payComputeStatus(r)}));
+  if(q){
+    rows=rows.filter(({r})=>[r.custName,r.phone,r.invoiceNo,r.model,r.chassisno].join(' ').toLowerCase().includes(q));
+  }
+  if(statusFilter){
+    rows=rows.filter(x=>x.status===statusFilter);
+  }
+  // Overdue first, then Due Soon, then Active, then Paid; within group by balance desc
+  const order={Overdue:0,'Due Soon':1,Active:2,Paid:3};
+  rows.sort((a,b)=>(order[a.status]-order[b.status])||(b.balance-a.balance));
+
+  if(!rows.length){
+    body.innerHTML=`<tr><td colspan="13" class="empty"><p>Koi credit entry chaina. "Add Credit Entry" thicheera thap्नुहोस्।</p></td></tr>`;
+    return;
+  }
+  body.innerHTML=rows.map(({r,i,balance,status,cls,daysInfo},n)=>{
+    const paid=payComputePaid(r);
+    const fu=payLatestFollowup(r);
+    let fuHtml='<span style="color:var(--gray-400)">—</span>';
+    if(fu){
+      const overdue=fu.nextDate && fu.nextDate<=today() && balance>0;
+      fuHtml=`<span class="badge ${overdue?'badge-red':'badge-gray'}">${overdue?'⚠️ ':''}${fu.nextDate||'—'}</span>`;
+    }
+    return `<tr>
+      <td>${n+1}</td>
+      <td><strong>${r.custName||'—'}</strong>${r.address?`<br><span style="font-size:11px;color:var(--gray-400)">${r.address}</span>`:''}</td>
+      <td class="mono">${r.phone||'—'}</td>
+      <td>${r.invoiceNo||'—'}${r.model?`<br><span style="font-size:11px;color:var(--gray-400)">${r.model}</span>`:''}</td>
+      <td>${payFmtDate(r.saleDateAD)}</td>
+      <td>${fmt(r.totalAmount||0)}</td>
+      <td style="color:var(--green-dark)">${fmt(paid)}</td>
+      <td style="font-weight:700;color:${balance>0?'#991b1b':'var(--green-dark)'}">${fmt(balance)}</td>
+      <td>${r.creditDays||0} din</td>
+      <td>${payFmtDate(r.dueDateAD)}</td>
+      <td><span class="badge ${cls}">${status}</span><br><span style="font-size:10.5px;color:var(--gray-400)">${daysInfo}</span></td>
+      <td>${fuHtml}</td>
+      <td>
+        <div class="action-btns">
+          <button class="icon-btn icon-btn-check" title="Manage / Payments" onclick="openPayableManage(${i})">💰</button>
+          <button class="icon-btn icon-btn-edit" title="Edit" onclick="openPayableModal(${i})">✏️</button>
+          <button class="icon-btn icon-btn-del" title="Delete" onclick="deletePayableEntry(${i})">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPayableMetrics(){
+  loadPayables();
+  const el=document.getElementById('pay-metrics');
+  if(!el) return;
+  let totalReceivable=0, overdueAmt=0, dueSoonAmt=0, pdcPendingCount=0, pdcPendingAmt=0, collectedThisMonth=0;
+  const ym=today().slice(0,7);
+  payables.forEach(r=>{
+    const {balance,status}=payComputeStatus(r);
+    if(balance>0) totalReceivable+=balance;
+    if(status==='Overdue') overdueAmt+=balance;
+    if(status==='Due Soon') dueSoonAmt+=balance;
+    if((r.saleDateAD||'').slice(0,7)===ym) collectedThisMonth+=(Number(r.advance)||0);
+    (r.payments||[]).forEach(p=>{ if((p.date||'').slice(0,7)===ym) collectedThisMonth+=(Number(p.amount)||0); });
+    (r.pdc||[]).forEach(c=>{ if(c.status==='Pending'){ pdcPendingCount++; pdcPendingAmt+=(Number(c.amount)||0); } });
+  });
+  el.innerHTML=`
+    <div class="metric-card"><div class="metric-label">Total Receivable (Baaki)</div><div class="metric-val ${totalReceivable>0?'red':'green'}">${fmt(totalReceivable)}</div><div class="metric-sub">Customer le tirnu parne</div></div>
+    <div class="metric-card"><div class="metric-label">Overdue Amount</div><div class="metric-val red">${fmt(overdueAmt)}</div><div class="metric-sub">Deadline nagheko</div></div>
+    <div class="metric-card"><div class="metric-label">Due Soon (≤3 din)</div><div class="metric-val amber">${fmt(dueSoonAmt)}</div><div class="metric-sub">Follow-up garnus</div></div>
+    <div class="metric-card"><div class="metric-label">Collected This Month</div><div class="metric-val green">${fmt(collectedThisMonth)}</div><div class="metric-sub">All payments</div></div>
+    <div class="metric-card"><div class="metric-label">PDC Pending</div><div class="metric-val blue">${pdcPendingCount}</div><div class="metric-sub">NPR ${fmt(pdcPendingAmt)}</div></div>
+  `;
+}
+
+function renderPayableAlerts(){
+  loadPayables();
+  const el=document.getElementById('pay-alerts-container');
+  if(!el) return;
+  const t=today();
+  const t7=payAddDays(t,7);
+  const overdue=[], dueSoon=[], fuDue=[], pdcSoon=[];
+  payables.forEach((r,i)=>{
+    const {balance,status}=payComputeStatus(r);
+    if(balance<=0) return;
+    if(status==='Overdue') overdue.push({r,i,balance});
+    if(r.dueDateAD && r.dueDateAD>=t && r.dueDateAD<=t7) dueSoon.push({r,i,balance});
+    const fu=payLatestFollowup(r);
+    if(fu && fu.nextDate && fu.nextDate<=t) fuDue.push({r,i});
+    (r.pdc||[]).forEach(c=>{
+      if(c.status==='Pending' && c.chequeDate && c.chequeDate<=t7) pdcSoon.push({r,c});
+    });
+  });
+  let html='';
+  if(overdue.length){
+    overdue.sort((a,b)=>b.balance-a.balance);
+    const sum=overdue.reduce((s,x)=>s+x.balance,0);
+    html+=`<div class="alert alert-danger"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><div><strong>⚠️ Overdue Baaki (${overdue.length} customer, total NPR ${fmt(sum)}):</strong><br><span style="font-size:12px;line-height:1.8">${overdue.slice(0,5).map(x=>x.r.custName+' — NPR '+fmt(x.balance)).join(', ')}${overdue.length>5?' ...':''}</span></div></div>`;
+  }
+  if(dueSoon.length){
+    html+=`<div class="alert alert-warn"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><div><strong>⏰ Due within 7 days:</strong> ${dueSoon.slice(0,6).map(x=>x.r.custName+' ('+x.r.dueDateAD+')').join(', ')}${dueSoon.length>6?' ...':''}</div></div>`;
+  }
+  if(fuDue.length){
+    html+=`<div class="alert alert-warn"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><div><strong>📞 Follow-up aaja/overdue:</strong> ${fuDue.slice(0,6).map(x=>x.r.custName).join(', ')}${fuDue.length>6?' ...':''}</div></div>`;
+  }
+  if(pdcSoon.length){
+    html+=`<div class="alert alert-warn"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg><div><strong>🏦 PDC Cheque presentation upcoming:</strong> ${pdcSoon.slice(0,6).map(x=>x.r.custName+' — #'+(x.c.chequeNo||'')+' ('+x.c.chequeDate+')').join(', ')}${pdcSoon.length>6?' ...':''}</div></div>`;
+  }
+  el.innerHTML=html;
+}
+
+// ── MANAGE MODAL (Payments / PDC / Follow-up) ──
+function openPayableManage(idx){
+  loadPayables();
+  payManageIdx=idx;
+  const r=payables[idx];
+  if(!r) return;
+  document.getElementById('paym-title').textContent='🧾 '+r.custName+' — Baaki Details';
+  document.getElementById('paym-pay-date').value=today();
+  document.getElementById('paym-pay-amount').value='';
+  document.getElementById('paym-pay-note').value='';
+  document.getElementById('paym-pay-mode').value='Cash';
+  document.getElementById('paym-cheque-no').value='';
+  document.getElementById('paym-cheque-bank').value='';
+  document.getElementById('paym-cheque-date').value='';
+  document.getElementById('paym-fu-note').value='';
+  document.getElementById('paym-fu-next').value='';
+  paymTogglePdcFields();
+  renderPaymManage();
+  openModal('payable-manage');
+}
+function paymTogglePdcFields(){
+  const mode=document.getElementById('paym-pay-mode').value;
+  const wrap=document.getElementById('paym-pdc-fields');
+  wrap.style.display=(mode==='Cheque-Cleared'||mode==='Cheque-PDC')?'grid':'none';
+}
+function renderPaymManage(){
+  const r=payables[payManageIdx];
+  if(!r) return;
+  const {balance,status,cls,daysInfo}=payComputeStatus(r);
+  const paid=payComputePaid(r);
+  document.getElementById('paym-summary').innerHTML=`
+    <div class="metric-card"><div class="metric-label">Total Amount</div><div class="metric-val blue">${fmt(r.totalAmount||0)}</div></div>
+    <div class="metric-card"><div class="metric-label">Paid Till Now</div><div class="metric-val green">${fmt(paid)}</div></div>
+    <div class="metric-card"><div class="metric-label">Remaining Balance</div><div class="metric-val ${balance>0?'red':'green'}">${fmt(balance)}</div></div>
+    <div class="metric-card"><div class="metric-label">Due Date</div><div class="metric-val amber" style="font-size:16px">${payFmtDate(r.dueDateAD)}</div><div class="metric-sub">${daysInfo}</div></div>
+    <div class="metric-card"><div class="metric-label">Status</div><div style="margin-top:4px"><span class="badge ${cls}" style="font-size:13px">${status}</span></div></div>
+  `;
+  const pb=document.getElementById('paym-payments-body');
+  if(!r.payments || !r.payments.length){
+    pb.innerHTML='<tr><td colspan="5" class="empty" style="padding:1rem"><p>Kunai payment record chaina</p></td></tr>';
+  } else {
+    pb.innerHTML=r.payments.map(p=>`<tr>
+      <td>${p.date||'—'}</td><td>${fmt(p.amount||0)}</td><td>${p.mode||'—'}</td>
+      <td>${p.chequeNo?('#'+p.chequeNo+(p.bank?(' / '+p.bank):'')):(p.note||'—')}</td>
+      <td><button class="icon-btn icon-btn-del" title="Delete" onclick="paymDeletePayment('${p.id}')">🗑️</button></td>
+    </tr>`).join('');
+  }
+  const cb=document.getElementById('paym-pdc-body');
+  if(!r.pdc || !r.pdc.length){
+    cb.innerHTML='<tr><td colspan="6" class="empty" style="padding:1rem"><p>Kunai PDC cheque chaina</p></td></tr>';
+  } else {
+    cb.innerHTML=r.pdc.map(c=>{
+      const badge=c.status==='Cleared'?'badge-green':c.status==='Bounced'?'badge-red':'badge-amber';
+      return `<tr>
+        <td class="mono">${c.chequeNo||'—'}</td><td>${c.bank||'—'}</td><td>${c.chequeDate||'—'}</td><td>${fmt(c.amount||0)}</td>
+        <td><span class="badge ${badge}">${c.status}</span></td>
+        <td>
+          <div class="action-btns">
+            ${c.status==='Pending'?`<button class="icon-btn icon-btn-check" title="Mark Cleared" onclick="paymMarkPdc('${c.id}','Cleared')">✔️</button><button class="icon-btn icon-btn-del" title="Mark Bounced" onclick="paymMarkPdc('${c.id}','Bounced')">↩️</button>`:''}
+            <button class="icon-btn icon-btn-del" title="Delete" onclick="paymDeletePdc('${c.id}')">🗑️</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+  const fb=document.getElementById('paym-fu-body');
+  if(!r.followups || !r.followups.length){
+    fb.innerHTML='<tr><td colspan="3" class="empty" style="padding:1rem"><p>Kunai follow-up log chaina</p></td></tr>';
+  } else {
+    fb.innerHTML=r.followups.slice().reverse().map(f=>`<tr><td>${f.date||'—'}</td><td>${f.note||'—'}</td><td>${f.nextDate||'—'}</td></tr>`).join('');
+  }
+}
+function paymAddPayment(){
+  const r=payables[payManageIdx];
+  if(!r) return;
+  const date=document.getElementById('paym-pay-date').value||today();
+  const amount=parseFloat(document.getElementById('paym-pay-amount').value)||0;
+  const mode=document.getElementById('paym-pay-mode').value;
+  const note=document.getElementById('paym-pay-note').value.trim();
+  if(amount<=0){alert('Amount raakhnus!');return;}
+  const chequeNo=document.getElementById('paym-cheque-no').value.trim();
+  const bank=document.getElementById('paym-cheque-bank').value.trim();
+  const chequeDate=document.getElementById('paym-cheque-date').value;
+  if(mode==='Cheque-PDC'){
+    if(!chequeNo||!chequeDate){alert('Cheque No. ra Cheque Date raakhnus!');return;}
+    r.pdc=r.pdc||[];
+    r.pdc.push({id:Date.now()+Math.floor(Math.random()*1000),chequeNo,bank,chequeDate,amount,status:'Pending',note});
+    toast('PDC cheque add vayo (Pending) ✓');
+  } else {
+    r.payments=r.payments||[];
+    r.payments.push({id:Date.now()+Math.floor(Math.random()*1000),date,amount,mode,note,chequeNo:(mode==='Cheque-Cleared'?chequeNo:''),bank:(mode==='Cheque-Cleared'?bank:'')});
+    toast('Payment add vayo ✓');
+  }
+  document.getElementById('paym-pay-amount').value='';
+  document.getElementById('paym-pay-note').value='';
+  document.getElementById('paym-cheque-no').value='';
+  document.getElementById('paym-cheque-bank').value='';
+  document.getElementById('paym-cheque-date').value='';
+  savePayables();
+  renderPaymManage();
+  renderPayableLedger(); renderPayableMetrics(); renderPayableAlerts();
+}
+function paymDeletePayment(id){
+  const r=payables[payManageIdx];
+  if(!r) return;
+  if(!confirm('Yo payment delete garne?'))return;
+  r.payments=(r.payments||[]).filter(p=>String(p.id)!==String(id));
+  savePayables();
+  renderPaymManage();
+  renderPayableLedger(); renderPayableMetrics(); renderPayableAlerts();
+}
+function paymMarkPdc(id,newStatus){
+  const r=payables[payManageIdx];
+  if(!r) return;
+  const c=(r.pdc||[]).find(x=>String(x.id)===String(id));
+  if(!c) return;
+  c.status=newStatus;
+  if(newStatus==='Cleared'){
+    r.payments=r.payments||[];
+    r.payments.push({id:Date.now()+Math.floor(Math.random()*1000),date:today(),amount:c.amount,mode:'Cheque (PDC Cleared)',note:'PDC #'+(c.chequeNo||''),chequeNo:c.chequeNo,bank:c.bank});
+    toast('Cheque cleared, payment record add vayo ✓');
+  } else {
+    toast('Cheque bounced marked ⚠️');
+  }
+  savePayables();
+  renderPaymManage();
+  renderPayableLedger(); renderPayableMetrics(); renderPayableAlerts();
+}
+function paymDeletePdc(id){
+  const r=payables[payManageIdx];
+  if(!r) return;
+  if(!confirm('Yo PDC entry delete garne?'))return;
+  r.pdc=(r.pdc||[]).filter(c=>String(c.id)!==String(id));
+  savePayables();
+  renderPaymManage();
+  renderPayableLedger(); renderPayableMetrics(); renderPayableAlerts();
+}
+function paymAddFollowup(){
+  const r=payables[payManageIdx];
+  if(!r) return;
+  const note=document.getElementById('paym-fu-note').value.trim();
+  const nextDate=document.getElementById('paym-fu-next').value;
+  if(!note && !nextDate){alert('Follow-up note athawa next date raakhnus!');return;}
+  r.followups=r.followups||[];
+  r.followups.push({id:Date.now()+Math.floor(Math.random()*1000),date:today(),note,nextDate});
+  document.getElementById('paym-fu-note').value='';
+  document.getElementById('paym-fu-next').value='';
+  savePayables();
+  renderPaymManage();
+  renderPayableLedger(); renderPayableMetrics(); renderPayableAlerts();
+  toast('Follow-up log add vayo ✓');
+}
+
+// ── PRINT STATEMENT ──
+function printPayableStatement(){
+  const r=payables[payManageIdx];
+  if(!r) return;
+  const {balance,status}=payComputeStatus(r);
+  const paid=payComputePaid(r);
+  const paymentsRows=(r.payments||[]).map(p=>`<tr><td>${p.date||''}</td><td>${p.mode||''}</td><td style="text-align:right">${fmt(p.amount||0)}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:#999">No payments yet</td></tr>';
+  const pdcRows=(r.pdc||[]).map(c=>`<tr><td>${c.chequeNo||''}</td><td>${c.bank||''}</td><td>${c.chequeDate||''}</td><td style="text-align:right">${fmt(c.amount||0)}</td><td>${c.status}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:#999">No PDC cheques</td></tr>';
+  const html=`<!DOCTYPE html><html><head><title>Baaki Statement - ${r.custName}</title>
+  <style>
+    body{font-family:'DM Sans',Arial,sans-serif;padding:30px;color:#1a1a1a}
+    h1{font-size:18px;margin-bottom:2px}
+    .sub{color:#666;font-size:12px;margin-bottom:20px}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px;font-size:12.5px}
+    th{background:#f3f4f6;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd}
+    td{padding:6px 8px;border-bottom:1px solid #eee}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;margin-bottom:18px;font-size:13px}
+    .lbl{color:#666}
+    .bal{font-size:20px;font-weight:700;color:${balance>0?'#991b1b':'#166534'}}
+  </style></head><body>
+  <h1>Divya Auto Hub Pvt. Ltd. — Customer Baaki Statement</h1>
+  <div class="sub">Maharajgunj, Kathmandu, Nepal</div>
+  <div class="grid">
+    <div><span class="lbl">Customer:</span> <strong>${r.custName||''}</strong></div>
+    <div><span class="lbl">Phone:</span> ${r.phone||'—'}</div>
+    <div><span class="lbl">Invoice No.:</span> ${r.invoiceNo||'—'}</div>
+    <div><span class="lbl">Model:</span> ${r.model||'—'}</div>
+    <div><span class="lbl">Sale Date:</span> ${r.saleDateAD||'—'}</div>
+    <div><span class="lbl">Credit Period:</span> ${r.creditDays||0} days</div>
+    <div><span class="lbl">Due Date:</span> ${r.dueDateAD||'—'}</div>
+    <div><span class="lbl">Status:</span> ${status}</div>
+    <div><span class="lbl">Total Amount:</span> NPR ${fmt(r.totalAmount||0)}</div>
+    <div><span class="lbl">Paid Till Now:</span> NPR ${fmt(paid)}</div>
+  </div>
+  <div class="bal">Remaining Balance: NPR ${fmt(balance)}</div>
+  <h3>Payment History</h3>
+  <table><thead><tr><th>Date</th><th>Mode</th><th style="text-align:right">Amount (NPR)</th></tr></thead><tbody>${paymentsRows}</tbody></table>
+  <h3>Post-Dated Cheques</h3>
+  <table><thead><tr><th>Cheque No.</th><th>Bank</th><th>Cheque Date</th><th style="text-align:right">Amount</th><th>Status</th></tr></thead><tbody>${pdcRows}</tbody></table>
+  <p style="margin-top:30px;font-size:11px;color:#999">Generated on ${today()}</p>
+  </body></html>`;
+  const win=window.open('','_blank','width=800,height=900');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>win.print(),400);
+}
+
+// ── EXPORT TO EXCEL ──
+function exportPayableXLSX(){
+  loadPayables();
+  const header=['S.N.','Customer','Phone','Address','Invoice No.','Model','Sale Date','Total Amount','Paid','Balance','Credit Days','Due Date','Status','PDC Pending Count'];
+  const rows=payables.map((r,i)=>{
+    const {balance,status}=payComputeStatus(r);
+    const pdcPending=(r.pdc||[]).filter(c=>c.status==='Pending').length;
+    return [i+1,r.custName||'',r.phone||'',r.address||'',r.invoiceNo||'',r.model||'',r.saleDateAD||'',r.totalAmount||0,payComputePaid(r),balance,r.creditDays||0,r.dueDateAD||'',status,pdcPending];
+  });
+  const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Payable Ledger');
+  XLSX.writeFile(wb,'Payable_Ledger_'+today()+'.xlsx');
+  toast('Excel exported ✓');
+}
+
+// ── Hook into showPage to init payable-ledger page ──
+const _origShowPagePay = typeof showPage === 'function' ? showPage : null;
+if(_origShowPagePay){
+  window.showPage = function(page, el){
+    _origShowPagePay(page, el);
+    if(page==='payable-ledger'){
+      renderPayableLedger();
+      renderPayableMetrics();
+      renderPayableAlerts();
+      const titleEl=document.getElementById('page-title'); if(titleEl) titleEl.textContent='Payable Ledger';
+      const mobTitle=document.getElementById('mob-page-title'); if(mobTitle) mobTitle.textContent='Payable Ledger';
+      const addBtn=document.getElementById('add-btn');
+      const mobAddBtn=document.getElementById('mob-add-btn');
+      if(addBtn){ addBtn.innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add Credit Entry'; addBtn.onclick=()=>openPayableModal(); addBtn.style.display=''; }
+      if(mobAddBtn){ mobAddBtn.innerHTML='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg> Add'; mobAddBtn.onclick=()=>openPayableModal(); mobAddBtn.style.display=''; }
+    }
+  };
+}
+
+// Run once on load if already on payable-ledger page, and daily reminder check
+setTimeout(()=>{
+  loadPayables();
+  if(document.getElementById('page-payable-ledger') && document.getElementById('page-payable-ledger').classList.contains('active')){
+    renderPayableLedger();
+    renderPayableMetrics();
+    renderPayableAlerts();
+  }
+  ['pay-f-chassisno','pay-f-invoiceno'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('input',function(){
+      const pos=this.selectionStart;
+      this.value=this.value.toUpperCase();
+      this.setSelectionRange(pos,pos);
+    });
+  });
+},650);
+
+// ══ END PAYABLE LEDGER MODULE ══
+
 </script>
 </body>
 </html>
