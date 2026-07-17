@@ -803,13 +803,14 @@ window.supabase = createClient(
               <input id="stock-search" placeholder="Search model, chassis, engine..." oninput="renderStock()">
             </div>
             <select id="stock-filter" class="btn btn-secondary" style="padding:6px 10px;font-size:12px" onchange="renderStock()">
-              <option value="">All Status</option>
+              <option value="">All (In Stock + Reserved)</option>
               <option value="in">In Stock</option>
               <option value="reserved">Reserved</option>
-              <option value="out">Sold/Out</option>
+              <option value="out">Sold/Out (history)</option>
             </select>
           </div>
         </div>
+        <div style="font-size:11px;color:var(--gray-400);padding:0 16px 6px">Sold/Out bikes list ma default ma dekhindaina — herna maathi ko dropdown bata "Sold/Out (history)" select garnus.</div>
         <div class="tbl-wrap">
           <table>
             <thead>
@@ -850,6 +851,7 @@ window.supabase = createClient(
               To <input type="date" id="pur-exp-to" onchange="renderPurchase()" style="padding:4px 6px;font-size:12px;border:1px solid var(--gray-300);border-radius:6px">
               <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pur-exp-from').value='';document.getElementById('pur-exp-to').value='';renderPurchase();toast('Date filter cleared')" title="Clear date filter">✕</button>
             </span>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray-600);cursor:pointer"><input type="checkbox" id="pur-month-group" onchange="renderPurchase()"> 📅 Month-wise</label>
             <button class="btn btn-secondary btn-sm" onclick="exportPurchaseXLSX()">📤 Export Excel</button>
             <button class="btn btn-secondary btn-sm" onclick="downloadPurchaseTemplate()">📋 Template</button>
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pur-import-file').click()">📥 Import Excel</button>
@@ -900,6 +902,7 @@ window.supabase = createClient(
               To <input type="date" id="sales-exp-to" onchange="renderSales()" style="padding:4px 6px;font-size:12px;border:1px solid var(--gray-300);border-radius:6px">
               <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sales-exp-from').value='';document.getElementById('sales-exp-to').value='';renderSales();toast('Date filter cleared')" title="Clear date filter">✕</button>
             </span>
+            <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--gray-600);cursor:pointer"><input type="checkbox" id="sales-month-group" onchange="renderSales()"> 📅 Month-wise</label>
             <button class="btn btn-secondary btn-sm" onclick="exportSalesXLSX()">📤 Export Excel</button>
             <button class="btn btn-secondary btn-sm" onclick="downloadSalesTemplate()">📋 Template</button>
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('sales-import-file').click()">📥 Import Excel</button>
@@ -2109,6 +2112,19 @@ window.supabase = createClient(
 
         <hr class="section-divider">
         <div class="section-sub">Customer Details</div>
+        <div class="form-group form-full" style="display:flex;align-items:center;gap:14px">
+          <div style="position:relative;flex-shrink:0">
+            <img id="fs-photo-preview" style="width:60px;height:60px;border-radius:50%;object-fit:cover;border:2px solid var(--gray-200);display:none">
+            <div id="fs-photo-placeholder" style="width:60px;height:60px;border-radius:50%;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:24px;color:var(--gray-400)">👤</div>
+          </div>
+          <div>
+            <label style="display:block;margin-bottom:4px">Customer Photo</label>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('fs-photo-file').click()">📷 Upload Photo</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="fs-photo-remove-btn" style="display:none" onclick="removeSalePhoto()">✕ Remove</button>
+            <input type="file" id="fs-photo-file" accept="image/*" style="display:none" onchange="handleSalePhotoUpload(event)">
+            <input type="hidden" id="fs-photo-data" value="">
+          </div>
+        </div>
         <div class="form-group"><label>Customer Name *</label><input id="fs-cust" placeholder="Ram Bahadur Shrestha"></div>
         <div class="form-group"><label>Phone</label><input id="fs-phone" placeholder="98XXXXXXXX"></div>
         <div class="form-group"><label>District</label><input id="fs-district" placeholder="Type district..." autocomplete="off"></div>
@@ -2148,12 +2164,30 @@ window.supabase = createClient(
 
         <div class="form-group"><label>Blue Book</label>
           <select id="fs-bluebook"><option value="">-- Select --</option><option value="received">✅ Received</option><option value="pending">⏳ Pending</option></select>
+          <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('fs-bluebook-file-input').click()">📎 Attach Scan/PDF</button>
+            <input type="file" id="fs-bluebook-file-input" accept="image/*,.pdf,application/pdf" style="display:none" onchange="handleDocFileUpload(event,'bluebook')">
+            <span id="fs-bluebook-file-label" style="font-size:11px;color:var(--gray-500)">No file attached</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="fs-bluebook-file-remove" style="display:none" onclick="removeDocFile('bluebook')">✕</button>
+            <input type="hidden" id="fs-bluebook-file" value="">
+            <input type="hidden" id="fs-bluebook-file-name" value="">
+            <input type="hidden" id="fs-bluebook-file-ispdf" value="">
+          </div>
         </div>
         <div class="form-group"><label>Service Book</label>
           <select id="fs-servicebook"><option value="">-- Select --</option><option value="received">✅ Received</option><option value="pending">⏳ Pending</option></select>
         </div>
         <div class="form-group"><label>Insurance Policy</label>
           <select id="fs-insurancepolicy"><option value="">-- Select --</option><option value="received">✅ Received</option><option value="pending">⏳ Pending</option></select>
+          <div style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('fs-insurancepolicy-file-input').click()">📎 Attach Scan/PDF</button>
+            <input type="file" id="fs-insurancepolicy-file-input" accept="image/*,.pdf,application/pdf" style="display:none" onchange="handleDocFileUpload(event,'insurancepolicy')">
+            <span id="fs-insurancepolicy-file-label" style="font-size:11px;color:var(--gray-500)">No file attached</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="fs-insurancepolicy-file-remove" style="display:none" onclick="removeDocFile('insurancepolicy')">✕</button>
+            <input type="hidden" id="fs-insurancepolicy-file" value="">
+            <input type="hidden" id="fs-insurancepolicy-file-name" value="">
+            <input type="hidden" id="fs-insurancepolicy-file-ispdf" value="">
+          </div>
         </div>
         <div class="form-group"><label>Old Bike — Sanakhat</label>
           <select id="fs-oldbike-sanakhat"><option value="">-- N/A --</option><option value="done">✅ Done</option><option value="pending">⏳ Pending</option></select>
@@ -2183,9 +2217,13 @@ window.supabase = createClient(
     <div class="modal-head"><h2>Customer / Sale Details</h2><button class="modal-close" onclick="closeModal('sale-view')">✕</button></div>
     <div class="modal-body">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--gray-100)">
-        <div>
-          <div style="font-size:17px;font-weight:600" id="sv-cust">—</div>
-          <div style="font-size:12px;color:var(--gray-500);margin-top:2px" id="sv-date">—</div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <img id="sv-photo" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid var(--gray-200);display:none">
+          <div id="sv-photo-placeholder" style="width:52px;height:52px;border-radius:50%;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--gray-400)">👤</div>
+          <div>
+            <div style="font-size:17px;font-weight:600" id="sv-cust">—</div>
+            <div style="font-size:12px;color:var(--gray-500);margin-top:2px" id="sv-date">—</div>
+          </div>
         </div>
         <div style="text-align:right">
           <div style="font-size:20px;font-weight:700;color:var(--green)" id="sv-amt">—</div>
@@ -2215,6 +2253,7 @@ window.supabase = createClient(
         <div style="grid-column:1/-1;border-top:1px solid var(--gray-100);padding-top:12px;margin-top:2px">
           <div style="font-weight:600;font-size:12px;color:var(--gray-600);margin-bottom:8px">📄 DOCUMENTS STATUS</div>
           <div class="doc-pills-wrap" id="sv-doc-pills" style="gap:6px"></div>
+          <div id="sv-doc-files" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
         </div>
 
         <div style="grid-column:1/-1">
@@ -2280,6 +2319,14 @@ window.supabase = createClient(
             <button class="btn btn-primary btn-sm" onclick="exportJSON()">⬇ Download JSON</button>
             <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-json').click()">⬆ Import JSON</button>
             <input type="file" id="file-json" accept=".json" style="display:none" onchange="handleJSONImport(event)">
+          </div>
+        </div>
+        <div style="border:1px solid var(--gray-200);border-radius:10px;padding:14px;grid-column:1/-1;background:#e8f5e9">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">🧹 Migrate Old Photos/PDFs to Cloud</div>
+          <div style="font-size:12px;color:var(--gray-600);margin-bottom:8px">Purano sales record haru ma photo/blue book/insurance file base64 (thulo text) ma save vayeko cha bhane, yo le tyo sabai cloud storage ma pathaidincha ra local storage khali garcha (localStorage full bhayera save fail hune problem fix huncha). Supabase ma "dah-files" storage bucket banaisakepachi yo chalaunus. Herda time laglha yeti kura garda.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-primary btn-sm" onclick="migrateLocalFilesToCloud()">☁️ Migrate Now</button>
+            <span id="migrate-status" style="font-size:12px;color:var(--gray-600)"></span>
           </div>
         </div>
         <div style="border:1px solid var(--gray-200);border-radius:10px;padding:14px;grid-column:1/-1;background:#fff8e1">
@@ -2556,6 +2603,36 @@ function makeTypeableAutocomplete(inputId, datalistId, getOptions, onResolved){
   inputEl.refreshOptions=refresh;
 }
 
+// ══════════════════════════════════════════════
+//  ☁️ CLOUD FILE STORAGE (customer photos, blue book / insurance scans & PDFs)
+//  Files upload to Supabase Storage; only the resulting URL (a short string)
+//  is saved in the record. This is what makes uploads PERMANENT — earlier,
+//  full images/PDFs were embedded as base64 text directly inside the sale
+//  record, which regularly blew past localStorage's ~5MB quota and silently
+//  failed to save (the record would look fine on screen, then lose its
+//  photo/file after a refresh or reopen).
+// ══════════════════════════════════════════════
+const STORAGE_BUCKET='dah-files';
+function dataURLtoBlob(dataUrl){
+  const arr=dataUrl.split(',');
+  const mimeMatch=arr[0].match(/:(.*?);/);
+  const mime=mimeMatch?mimeMatch[1]:'application/octet-stream';
+  const bstr=atob(arr[1]);
+  let n=bstr.length;
+  const u8arr=new Uint8Array(n);
+  while(n--){u8arr[n]=bstr.charCodeAt(n);}
+  return new Blob([u8arr],{type:mime});
+}
+async function uploadFileToStorage(blob,ext,folder){
+  if(!window.supabase) throw new Error('no-supabase');
+  const fname=folder+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  const {error}=await window.supabase.storage.from(STORAGE_BUCKET).upload(fname,blob,{contentType:blob.type||'application/octet-stream',upsert:false});
+  if(error) throw error;
+  const {data}=window.supabase.storage.from(STORAGE_BUCKET).getPublicUrl(fname);
+  return data.publicUrl;
+}
+function isStorageUrl(v){ return typeof v==='string' && /^https?:\/\//.test(v); }
+
 // ── DB ──
 async function dbGet(k) { try { const r=localStorage.getItem(k); return r?JSON.parse(r):null; } catch { return null; } }
 let suppressAutoBackup=false;
@@ -2567,7 +2644,14 @@ async function dbSet(k,v) {
       scheduleFirebaseSync();
     }
     cloudPush(k,v);
-  } catch(e){console.warn(e);}
+  } catch(e){
+    console.warn(e);
+    // Local storage full (this used to fail silently, hiding data-loss). Now we
+    // warn the user directly and still push straight to the cloud so nothing is lost.
+    updateCloudSyncStatus('Local storage full! Saving to cloud only',false);
+    try{ cloudPush(k,v); }catch(e2){ console.warn(e2); }
+    alert('⚠️ Local storage is full so this device could not save a local copy. Trying to save to the cloud instead — please check your internet connection and confirm the record saved.');
+  }
 }
 
 // ══════════════════════════════════════════════
@@ -2763,6 +2847,13 @@ function dateSortKey(str){
   return `${parts[2].trim()}-${pad(parts[1])}-${pad(parts[0])}`;
 }
 
+function monthLabel(ym){
+  if(!ym||ym.length<7) return 'Unknown Date';
+  const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const y=ym.slice(0,4),m=parseInt(ym.slice(5,7),10)-1;
+  return (months[m]||('Month '+ym.slice(5,7)))+' '+y;
+}
+
 function statusBadge(s){
   if(s==='out') return '<span class="badge badge-red">Sold/Out</span>';
   if(s==='reserved') return '<span class="badge badge-amber">Reserved</span>';
@@ -2900,7 +2991,7 @@ function renderStock(){
   let rows=stock.filter(s=>{
     const match=!q||(s.model+s.colour+s.bikeno+s.engineno+s.chassisno+(s.batteryno||'')+(s.invoiceno||'')).toLowerCase().includes(q);
     const st=s.status||'in';
-    const fMatch=!f||(f==='in'&&st==='in')||(f==='reserved'&&st==='reserved')||(f==='out'&&st==='out');
+    const fMatch=f?((f==='in'&&st==='in')||(f==='reserved'&&st==='reserved')||(f==='out'&&st==='out')):st!=='out';
     return match&&fMatch;
   });
   const tbody=document.getElementById('stock-body');
@@ -2963,10 +3054,51 @@ function docPill(label,val,doneVal,pendingVal,remainingVal){
   return `<span class="doc-pill ${cls}">${txt}</span>`;
 }
 
+function salesRowHtml(s,sn,rowCls,gid){
+  const docPills=[
+    s.bluebook?`<span class="doc-pill ${s.bluebook==='received'?'received':'pending'}">📘 Blue Book: ${s.bluebook==='received'?'✅':'⏳'}</span>`:'',
+    s.servicebook?`<span class="doc-pill ${s.servicebook==='received'?'received':'pending'}">🔧 Service: ${s.servicebook==='received'?'✅':'⏳'}</span>`:'',
+    s.insurancepolicy?`<span class="doc-pill ${s.insurancepolicy==='received'?'received':'pending'}">🛡️ Policy: ${s.insurancepolicy==='received'?'✅':'⏳'}</span>`:'',
+  ].filter(Boolean).join('');
+  // Sanakhat pill
+  const sanakVal=s.oldbikesakhat||'';
+  const sanakPill=sanakVal
+    ? `<span class="sanak-pill ${sanakVal==='done'?'sanak-done':'sanak-pending'}">${sanakVal==='done'?'✅ Done':'⏳ Pending'}</span>`
+    : `<span class="sanak-pill sanak-na">—</span>`;
+  // Old bike tax pill
+  const taxVal=s.oldbiketax||'';
+  let taxPill;
+  if(!taxVal) taxPill=`<span class="sanak-pill sanak-na">—</span>`;
+  else if(taxVal==='clear'||taxVal==='done') taxPill=`<span class="sanak-pill sanak-clear">✅ ${taxVal==='clear'?'Clear':'Done'}</span>`;
+  else taxPill=`<span class="sanak-pill sanak-remaining">⚠️ ${taxVal==='remaining'?'Remaining':'Pending'}</span>`;
+  return `<tr${rowCls?` class="${rowCls}"`:''}${gid?` data-gid="${gid}"`:''}>
+  <td style="text-align:center;font-weight:600;color:var(--gray-400)">${sn}</td>
+  <td>${s.date}<br><span style="font-size:10px;color:var(--gray-400)">${s.nepaliDate||''}</span></td>
+  <td><div style="display:flex;align-items:center;gap:8px">${s.photo?`<img src="${s.photo}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0">`:`<div style="width:28px;height:28px;border-radius:50%;background:var(--gray-100);display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--gray-400);flex-shrink:0">👤</div>`}<div><strong>${s.cust}</strong><br><span style="font-size:11px;color:var(--gray-400)">${s.addr||''}</span></div></div></td>
+  <td>${s.phone||'—'}</td>
+  <td>${s.model}<br><span style="font-size:10px;color:var(--gray-400)">${s.invoiceno||''}</span></td>
+  <td><span class="mono">${s.bikeno||'—'}</span></td>
+  <td><div style="display:flex;align-items:center;gap:5px"><div class="color-dot" style="background:${s.colorHex||'#ccc'}"></div>${s.colour||'—'}</div></td>
+  <td><strong>NPR ${fmt(s.amt)}</strong></td>
+  <td>${s.pay||'—'}</td>
+  <td>${sanakPill}</td>
+  <td>${taxPill}</td>
+  <td><div class="doc-pills-wrap">${docPills||'<span style="color:var(--gray-400);font-size:11px">—</span>'}</div></td>
+  <td>
+    <div class="action-btns">
+      <button class="icon-btn icon-btn-edit" onclick="viewSaleDetail(${s.origIdx})" title="View Details"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button class="icon-btn icon-btn-edit" onclick="editSale(${s.origIdx})" title="Edit"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      <button class="icon-btn icon-btn-del" onclick="deleteSale(${s.origIdx})" title="Delete"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
+    </div>
+  </td>
+</tr>`;
+}
+
 function renderSales(){
   const q=(document.getElementById('sales-search').value||'').toLowerCase();
   const fromV=(document.getElementById('sales-exp-from')?.value||'').trim();
   const toV=(document.getElementById('sales-exp-to')?.value||'').trim();
+  const monthWise=document.getElementById('sales-month-group')?.checked;
   let rows=sales.map((s,origIdx)=>({...s,origIdx})).filter(s=>!q||(s.cust+s.model+s.phone).toLowerCase().includes(q));
   if(fromV||toV){
     rows=rows.filter(s=>{
@@ -2981,45 +3113,31 @@ function renderSales(){
   rows.sort((a,b)=>dateSortKey(b.date).localeCompare(dateSortKey(a.date)));
   const tbody=document.getElementById('sales-body');
   if(!rows.length){tbody.innerHTML='<tr><td colspan="13"><div class="empty"><p>'+((fromV||toV)?'Selected date range ma kunai sale vetiyena':'No sales yet')+'</p></div></td></tr>';return;}
-  tbody.innerHTML=rows.map((s,i)=>{
-    const docPills=[
-      s.bluebook?`<span class="doc-pill ${s.bluebook==='received'?'received':'pending'}">📘 Blue Book: ${s.bluebook==='received'?'✅':'⏳'}</span>`:'',
-      s.servicebook?`<span class="doc-pill ${s.servicebook==='received'?'received':'pending'}">🔧 Service: ${s.servicebook==='received'?'✅':'⏳'}</span>`:'',
-      s.insurancepolicy?`<span class="doc-pill ${s.insurancepolicy==='received'?'received':'pending'}">🛡️ Policy: ${s.insurancepolicy==='received'?'✅':'⏳'}</span>`:'',
-    ].filter(Boolean).join('');
-    // Sanakhat pill
-    const sanakVal=s.oldbikesakhat||'';
-    const sanakPill=sanakVal
-      ? `<span class="sanak-pill ${sanakVal==='done'?'sanak-done':'sanak-pending'}">${sanakVal==='done'?'✅ Done':'⏳ Pending'}</span>`
-      : `<span class="sanak-pill sanak-na">—</span>`;
-    // Old bike tax pill
-    const taxVal=s.oldbiketax||'';
-    let taxPill;
-    if(!taxVal) taxPill=`<span class="sanak-pill sanak-na">—</span>`;
-    else if(taxVal==='clear'||taxVal==='done') taxPill=`<span class="sanak-pill sanak-clear">✅ ${taxVal==='clear'?'Clear':'Done'}</span>`;
-    else taxPill=`<span class="sanak-pill sanak-remaining">⚠️ ${taxVal==='remaining'?'Remaining':'Pending'}</span>`;
-    return `<tr>
-    <td style="text-align:center;font-weight:600;color:var(--gray-400)">${i+1}</td>
-    <td>${s.date}<br><span style="font-size:10px;color:var(--gray-400)">${s.nepaliDate||''}</span></td>
-    <td><strong>${s.cust}</strong><br><span style="font-size:11px;color:var(--gray-400)">${s.addr||''}</span></td>
-    <td>${s.phone||'—'}</td>
-    <td>${s.model}<br><span style="font-size:10px;color:var(--gray-400)">${s.invoiceno||''}</span></td>
-    <td><span class="mono">${s.bikeno||'—'}</span></td>
-    <td><div style="display:flex;align-items:center;gap:5px"><div class="color-dot" style="background:${s.colorHex||'#ccc'}"></div>${s.colour||'—'}</div></td>
-    <td><strong>NPR ${fmt(s.amt)}</strong></td>
-    <td>${s.pay||'—'}</td>
-    <td>${sanakPill}</td>
-    <td>${taxPill}</td>
-    <td><div class="doc-pills-wrap">${docPills||'<span style="color:var(--gray-400);font-size:11px">—</span>'}</div></td>
-    <td>
-      <div class="action-btns">
-        <button class="icon-btn icon-btn-edit" onclick="viewSaleDetail(${s.origIdx})" title="View Details"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
-        <button class="icon-btn icon-btn-edit" onclick="editSale(${s.origIdx})" title="Edit"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-        <button class="icon-btn icon-btn-del" onclick="deleteSale(${s.origIdx})" title="Delete"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>
-      </div>
-    </td>
-  </tr>`;
-  }).join('');
+
+  if(!monthWise){
+    tbody.innerHTML=rows.map((s,i)=>salesRowHtml(s,i+1,'','')).join('');
+    return;
+  }
+
+  // Month-wise grouped view
+  const groups={};
+  const order=[];
+  rows.forEach(s=>{
+    const mk=dateSortKey(s.date).slice(0,7)||'unknown';
+    if(!groups[mk]){groups[mk]={items:[],total:0};order.push(mk);}
+    groups[mk].items.push(s);
+    groups[mk].total+=Number(s.amt||0);
+  });
+  let sn=0,html='';
+  order.forEach(mk=>{
+    const g=groups[mk];
+    const gid='smgrp-'+mk.replace(/[^0-9]/g,'');
+    html+=`<tr class="group-header" onclick="toggleGroup('${gid}')">
+      <td colspan="13"><span class="group-chevron open" id="chev-${gid}">▶</span><strong>${mk==='unknown'?'Unknown Date':monthLabel(mk)}</strong><span style="font-size:11px;color:var(--gray-400);margin-left:8px">${g.items.length} bike${g.items.length!==1?'s':''} sold · NPR ${fmt(g.total)}</span></td>
+    </tr>`;
+    g.items.forEach(s=>{sn++;html+=salesRowHtml(s,sn,'bike-row',gid);});
+  });
+  tbody.innerHTML=html;
 }
 
 // ── Export Sales to Excel ──
@@ -3776,6 +3894,9 @@ function resetSaleForm(){
   autoCalcSalesDays();
   const p=document.getElementById('fs-bike-picker');if(p)p.innerHTML='<option value="">-- Select bike --</option>';
   const w=document.getElementById('fs-bike-picker-wrap');if(w)w.style.display='none';
+  removeSalePhoto();
+  removeDocFile('bluebook');
+  removeDocFile('insurancepolicy');
 }
 
 async function saveSale(){
@@ -3797,6 +3918,7 @@ async function saveSale(){
   const notes=document.getElementById('fs-notes').value.trim();
   const phone=document.getElementById('fs-phone').value.trim();
   const addr=document.getElementById('fs-addr').value.trim();
+  const photo=document.getElementById('fs-photo-data')?document.getElementById('fs-photo-data').value:'';
   // New fields
   const nepaliDate=document.getElementById('fs-nepali-date').value.trim();
   const salesDays=document.getElementById('fs-sales-days').value.trim();
@@ -3815,11 +3937,17 @@ async function saveSale(){
   const insurancepolicy=document.getElementById('fs-insurancepolicy').value;
   const oldbikesakhat=document.getElementById('fs-oldbike-sanakhat').value;
   const oldbiketax=document.getElementById('fs-oldbike-tax').value;
+  const bluebookFile=document.getElementById('fs-bluebook-file')?document.getElementById('fs-bluebook-file').value:'';
+  const bluebookFileName=document.getElementById('fs-bluebook-file-name')?document.getElementById('fs-bluebook-file-name').value:'';
+  const bluebookFileIsPdf=document.getElementById('fs-bluebook-file-ispdf')?!!document.getElementById('fs-bluebook-file-ispdf').value:false;
+  const insurancepolicyFile=document.getElementById('fs-insurancepolicy-file')?document.getElementById('fs-insurancepolicy-file').value:'';
+  const insurancepolicyFileName=document.getElementById('fs-insurancepolicy-file-name')?document.getElementById('fs-insurancepolicy-file-name').value:'';
+  const insurancepolicyFileIsPdf=document.getElementById('fs-insurancepolicy-file-ispdf')?!!document.getElementById('fs-insurancepolicy-file-ispdf').value:false;
 
   if(editSaleId!==null){
     const existing=sales[editSaleId];
     if(!existing){editSaleId=null;closeModal('sale');return;}
-    sales[editSaleId]={...existing,cust,phone,addr,model,bikeno,colour,colorHex,engineno,chassisno,amt,pay,date,notes,nepaliDate,salesDays,invoiceno,vatno,namsari,bagmatiNo,modelYear,insurance,insuranceType,insuranceName,selfInsurance,bluebook,servicebook,insurancepolicy,oldbikesakhat,oldbiketax};
+    sales[editSaleId]={...existing,cust,phone,addr,photo,model,bikeno,colour,colorHex,engineno,chassisno,amt,pay,date,notes,nepaliDate,salesDays,invoiceno,vatno,namsari,bagmatiNo,modelYear,insurance,insuranceType,insuranceName,selfInsurance,bluebook,servicebook,insurancepolicy,oldbikesakhat,oldbiketax,bluebookFile,bluebookFileName,bluebookFileIsPdf,insurancepolicyFile,insurancepolicyFileName,insurancepolicyFileIsPdf};
     await dbSet('dah2-sales',sales);
     closeModal('sale');render();
     toast('Sale updated ✓');
@@ -3827,7 +3955,7 @@ async function saveSale(){
     return;
   }
 
-  const saleObj={cust,phone,addr,model,bikeno,colour,colorHex,engineno,chassisno,amt,pay,date,notes,nepaliDate,salesDays,invoiceno,vatno,namsari,bagmatiNo,modelYear,insurance,insuranceType,insuranceName,selfInsurance,bluebook,servicebook,insurancepolicy,oldbikesakhat,oldbiketax};
+  const saleObj={cust,phone,addr,photo,model,bikeno,colour,colorHex,engineno,chassisno,amt,pay,date,notes,nepaliDate,salesDays,invoiceno,vatno,namsari,bagmatiNo,modelYear,insurance,insuranceType,insuranceName,selfInsurance,bluebook,servicebook,insurancepolicy,oldbikesakhat,oldbiketax,bluebookFile,bluebookFileName,bluebookFileIsPdf,insurancepolicyFile,insurancepolicyFileName,insurancepolicyFileIsPdf};
   // Mark stock as sold
   const pickerEl=document.getElementById('fs-bike-picker');
   const selectedId=pickerEl?parseInt(pickerEl.value):NaN;
@@ -3856,6 +3984,9 @@ let currentViewedSaleIndex=null;
 function viewSaleDetail(i){
   const s=sales[i];if(!s)return;
   currentViewedSaleIndex=i;
+  const svPhoto=document.getElementById('sv-photo'),svPhotoPh=document.getElementById('sv-photo-placeholder');
+  if(s.photo){svPhoto.src=s.photo;svPhoto.style.display='block';svPhotoPh.style.display='none';}
+  else{svPhoto.style.display='none';svPhotoPh.style.display='flex';}
   document.getElementById('sv-cust').textContent=s.cust||'—';
   document.getElementById('sv-date').textContent=s.date||'—';
   document.getElementById('sv-amt').textContent='NPR '+fmt(s.amt||0);
@@ -3896,6 +4027,21 @@ function viewSaleDetail(i){
     return `<span class="doc-pill ${cls}" style="font-size:12px;padding:4px 10px">${icon} ${d.label}: ${ok?(d.ok==='received'?'Received':d.ok==='done'?'Done':'Clear'):(d.key==='remaining'?'Remaining':'Pending')}</span>`;
   }).join('');
   pillsEl.innerHTML=pills||'<span style="color:var(--gray-400);font-size:12px">No documents recorded</span>';
+  // Attached document files (Blue Book / Insurance Policy scans)
+  const fileLinks=[];
+  const custSlug=(s.cust||'customer').replace(/[^a-z0-9]+/gi,'_');
+  if(s.bluebookFile){
+    const bbData=s.bluebookFile.replace(/'/g,"\\'");
+    const bbName=(s.bluebookFileName||('BlueBook_'+custSlug+(s.bluebookFileIsPdf?'.pdf':'.jpg'))).replace(/'/g,"\\'");
+    fileLinks.push(`<button type="button" class="btn btn-secondary btn-sm" onclick="openDocFile('${bbData}')">${s.bluebookFileIsPdf?'📄':'🖼️'} Blue Book — View</button><button type="button" class="btn btn-secondary btn-sm" onclick="downloadDocFile('${bbData}','${bbName}')">⬇ Blue Book — Download</button>`);
+  }
+  if(s.insurancepolicyFile){
+    const ipData=s.insurancepolicyFile.replace(/'/g,"\\'");
+    const ipName=(s.insurancepolicyFileName||('InsurancePolicy_'+custSlug+(s.insurancepolicyFileIsPdf?'.pdf':'.jpg'))).replace(/'/g,"\\'");
+    fileLinks.push(`<button type="button" class="btn btn-secondary btn-sm" onclick="openDocFile('${ipData}')">${s.insurancepolicyFileIsPdf?'📄':'🖼️'} Insurance Policy — View</button><button type="button" class="btn btn-secondary btn-sm" onclick="downloadDocFile('${ipData}','${ipName}')">⬇ Insurance Policy — Download</button>`);
+  }
+  const filesEl=document.getElementById('sv-doc-files');
+  if(filesEl) filesEl.innerHTML=fileLinks.join('');
   const phoneDigits=(s.phone||'').replace(/[^0-9]/g,'');
   const callBtn=document.getElementById('sv-call-btn');
   const waBtn=document.getElementById('sv-wa-btn');
@@ -3927,6 +4073,15 @@ function editSale(i){
   document.getElementById('fs-addr').value=s.addr||'';
   document.getElementById('fs-district').value='';
   document.getElementById('fs-muni').value='';
+  if(s.photo){
+    document.getElementById('fs-photo-data').value=s.photo;
+    const prev=document.getElementById('fs-photo-preview');
+    prev.src=s.photo;prev.style.display='block';
+    document.getElementById('fs-photo-placeholder').style.display='none';
+    document.getElementById('fs-photo-remove-btn').style.display='inline-flex';
+  }else{
+    removeSalePhoto();
+  }
   document.getElementById('fs-model').value=s.model||'';
   document.getElementById('fs-bikeno').value=s.bikeno||'';
   document.getElementById('fs-colour').value=s.colour||'';
@@ -3955,6 +4110,8 @@ function editSale(i){
   document.getElementById('fs-insurancepolicy').value=s.insurancepolicy||'';
   document.getElementById('fs-oldbike-sanakhat').value=s.oldbikesakhat||'';
   document.getElementById('fs-oldbike-tax').value=s.oldbiketax||'';
+  if(s.bluebookFile){finishDocUpload('bluebook',s.bluebookFile,s.bluebookFileName||'BlueBook',!!s.bluebookFileIsPdf);}else{removeDocFile('bluebook');}
+  if(s.insurancepolicyFile){finishDocUpload('insurancepolicy',s.insurancepolicyFile,s.insurancepolicyFileName||'InsurancePolicy',!!s.insurancepolicyFileIsPdf);}else{removeDocFile('insurancepolicy');}
   const wrap=document.getElementById('fs-bike-picker-wrap');if(wrap)wrap.style.display='none';
   document.getElementById('sale-modal-title').textContent='Edit Sale — '+s.cust;
   const saveBtn=document.getElementById('sale-save-btn');if(saveBtn)saveBtn.textContent='Update Sale';
@@ -4204,6 +4361,222 @@ function handleLogoUpload(e){
     try{localStorage.setItem('dah_logo',ev.target.result);}catch(e){}
   };
   reader.readAsDataURL(file);
+}
+
+function handleSalePhotoUpload(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=async ()=>{
+      const maxDim=320;
+      let w=img.width,h=img.height;
+      if(w>h){if(w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}}
+      else{if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}}
+      const canvas=document.createElement('canvas');
+      canvas.width=w;canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      const dataUrl=canvas.toDataURL('image/jpeg',0.7);
+      const prev=document.getElementById('fs-photo-preview');
+      prev.src=dataUrl;prev.style.display='block';
+      document.getElementById('fs-photo-placeholder').style.display='none';
+      document.getElementById('fs-photo-remove-btn').style.display='inline-flex';
+      document.getElementById('fs-photo-data').value=dataUrl; // temp preview value while uploading
+      try{
+        canvas.toBlob(async (blob)=>{
+          try{
+            const url=await uploadFileToStorage(blob,'jpg','photos');
+            document.getElementById('fs-photo-data').value=url;
+          }catch(err){
+            console.warn('Photo cloud upload failed, keeping local copy only:',err);
+            updateCloudSyncStatus('Photo saved locally only (cloud upload fail)',false);
+          }
+        },'image/jpeg',0.7);
+      }catch(err){console.warn(err);}
+    };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeSalePhoto(){
+  document.getElementById('fs-photo-data').value='';
+  const prev=document.getElementById('fs-photo-preview');
+  prev.src='';prev.style.display='none';
+  const ph=document.getElementById('fs-photo-placeholder');if(ph)ph.style.display='flex';
+  const btn=document.getElementById('fs-photo-remove-btn');if(btn)btn.style.display='none';
+}
+
+function openDocFile(dataUrl){
+  if(isStorageUrl(dataUrl)){ window.open(dataUrl,'_blank'); return; }
+  try{
+    const arr=dataUrl.split(',');
+    const mimeMatch=arr[0].match(/:(.*?);/);
+    const mime=mimeMatch?mimeMatch[1]:'application/octet-stream';
+    const bstr=atob(arr[1]);
+    let n=bstr.length;
+    const u8arr=new Uint8Array(n);
+    while(n--){u8arr[n]=bstr.charCodeAt(n);}
+    const blob=new Blob([u8arr],{type:mime});
+    const url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(err){
+    window.open(dataUrl,'_blank');
+  }
+}
+
+function downloadDocFile(dataUrl,fileName){
+  if(isStorageUrl(dataUrl)){
+    const a=document.createElement('a');
+    a.href=dataUrl;
+    a.download=fileName||'document';
+    a.target='_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    return;
+  }
+  try{
+    const arr=dataUrl.split(',');
+    const mimeMatch=arr[0].match(/:(.*?);/);
+    const mime=mimeMatch?mimeMatch[1]:'application/octet-stream';
+    const bstr=atob(arr[1]);
+    let n=bstr.length;
+    const u8arr=new Uint8Array(n);
+    while(n--){u8arr[n]=bstr.charCodeAt(n);}
+    const blob=new Blob([u8arr],{type:mime});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=fileName||'document';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(err){
+    const a=document.createElement('a');
+    a.href=dataUrl;
+    a.download=fileName||'document';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+}
+
+function handleDocFileUpload(e,prefix){
+  const file=e.target.files[0];if(!file)return;
+  const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+  const label=document.getElementById('fs-'+prefix+'-file-label');if(label)label.textContent='⏳ Uploading...';
+  if(isPdf){
+    uploadFileToStorage(file,'pdf',prefix).then(url=>{
+      finishDocUpload(prefix,url,file.name,true);
+    }).catch(err=>{
+      console.warn('PDF cloud upload failed, falling back to local copy:',err);
+      const reader=new FileReader();
+      reader.onload=ev=>{ finishDocUpload(prefix,ev.target.result,file.name,true); updateCloudSyncStatus('File saved locally only (cloud upload fail)',false); };
+      reader.readAsDataURL(file);
+    });
+  }else{
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      const img=new Image();
+      img.onload=()=>{
+        const maxDim=1400;
+        let w=img.width,h=img.height;
+        if(w>h){if(w>maxDim){h=Math.round(h*maxDim/w);w=maxDim;}}
+        else{if(h>maxDim){w=Math.round(w*maxDim/h);h=maxDim;}}
+        const canvas=document.createElement('canvas');
+        canvas.width=w;canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        canvas.toBlob(blob=>{
+          uploadFileToStorage(blob,'jpg',prefix).then(url=>{
+            finishDocUpload(prefix,url,file.name,false);
+          }).catch(err=>{
+            console.warn('Scan cloud upload failed, falling back to local copy:',err);
+            const dataUrl=canvas.toDataURL('image/jpeg',0.82);
+            finishDocUpload(prefix,dataUrl,file.name,false);
+            updateCloudSyncStatus('File saved locally only (cloud upload fail)',false);
+          });
+        },'image/jpeg',0.82);
+      };
+      img.src=ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function finishDocUpload(prefix,dataUrl,fileName,isPdf){
+  const dataEl=document.getElementById('fs-'+prefix+'-file');if(dataEl)dataEl.value=dataUrl;
+  const nameEl=document.getElementById('fs-'+prefix+'-file-name');if(nameEl)nameEl.value=fileName;
+  const pdfEl=document.getElementById('fs-'+prefix+'-file-ispdf');if(pdfEl)pdfEl.value=isPdf?'1':'';
+  const label=document.getElementById('fs-'+prefix+'-file-label');if(label)label.textContent=(isPdf?'📄 ':'🖼️ ')+fileName;
+  const removeBtn=document.getElementById('fs-'+prefix+'-file-remove');if(removeBtn)removeBtn.style.display='inline-flex';
+}
+
+function removeDocFile(prefix){
+  const dataEl=document.getElementById('fs-'+prefix+'-file');if(dataEl)dataEl.value='';
+  const nameEl=document.getElementById('fs-'+prefix+'-file-name');if(nameEl)nameEl.value='';
+  const pdfEl=document.getElementById('fs-'+prefix+'-file-ispdf');if(pdfEl)pdfEl.value='';
+  const label=document.getElementById('fs-'+prefix+'-file-label');if(label)label.textContent='No file attached';
+  const removeBtn=document.getElementById('fs-'+prefix+'-file-remove');if(removeBtn)removeBtn.style.display='none';
+}
+
+// ── One-time cleanup: move old base64 photos/PDFs already sitting in
+//    localStorage (from before cloud upload existed) out to Supabase Storage,
+//    replacing them with short URLs so localStorage stops overflowing. ──
+async function migrateLocalFilesToCloud(){
+  const statusEl=document.getElementById('migrate-status');
+  const setStatus=(t)=>{ if(statusEl)statusEl.textContent=t; };
+  if(!window.supabase){ setStatus('❌ Cloud not available'); return; }
+  setStatus('Reading local data...');
+  let list;
+  try{ list=JSON.parse(localStorage.getItem('dah2-sales')||'[]'); }catch(e){ list=[]; }
+  if(!Array.isArray(list)||!list.length){ setStatus('No sales data found.'); return; }
+
+  const fields=[
+    {key:'photo',ext:'jpg',folder:'photos'},
+    {key:'bluebookFile',ext:null,folder:'bluebook'},
+    {key:'insurancepolicyFile',ext:null,folder:'insurancepolicy'}
+  ];
+
+  let toMigrate=0;
+  list.forEach(s=>{ fields.forEach(f=>{ if(s[f.key]&&typeof s[f.key]==='string'&&s[f.key].startsWith('data:')) toMigrate++; }); });
+  if(toMigrate===0){ setStatus('✅ Nothing to migrate — already clean.'); return; }
+
+  if(!confirm(`${toMigrate} old photo/file(s) le local storage bhareko cha. Aba cloud ma pathaune? (Internet connection chahincha, thulo file vaye time laglha)`)) return;
+
+  let done=0,failed=0;
+  for(const s of list){
+    for(const f of fields){
+      const v=s[f.key];
+      if(v&&typeof v==='string'&&v.startsWith('data:')){
+        setStatus(`Migrating ${done+failed+1}/${toMigrate}...`);
+        try{
+          const blob=dataURLtoBlob(v);
+          let ext=f.ext;
+          if(!ext){ ext=(s[f.key+'IsPdf'])?'pdf':'jpg'; }
+          const url=await uploadFileToStorage(blob,ext,f.folder);
+          s[f.key]=url;
+          done++;
+        }catch(err){
+          console.warn('Migrate failed for',f.key,err);
+          failed++;
+        }
+      }
+    }
+  }
+
+  try{
+    localStorage.setItem('dah2-sales',JSON.stringify(list));
+    sales=list;
+    cloudPush('dah2-sales',list);
+    setStatus(`✅ Done. ${done} migrated${failed?`, ${failed} failed (kept local)`:''}. Local storage freed.`);
+    if(typeof renderSales==='function') renderSales();
+  }catch(e){
+    console.warn(e);
+    setStatus(`⚠️ ${done} file(s) uploaded to cloud, but still could not save locally — try Migrate Now again, or export/clear old records.`);
+  }
 }
 
 function loadLogo(){
@@ -5121,6 +5494,7 @@ function printSaleDetail(){
   }).join('');
   const logoSrc=localStorage.getItem('dah2-val-logo')||'';
   const logoHtml=logoSrc?`<img src="${logoSrc}" style="width:80px;height:55px;object-fit:contain" alt="logo">`:'';
+  const custPhotoHtml=s.photo?`<img src="${s.photo}" style="width:76px;height:76px;border-radius:8px;object-fit:cover;border:1px solid #ddd;flex-shrink:0">`:'';
   const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Sale — ${s.cust}</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -5155,14 +5529,17 @@ function printSaleDetail(){
 
   <div class="section">
     <div class="section-head">Customer Information</div>
-    <div class="grid">
-      <div class="field"><div class="field-label">Customer Name</div><div class="field-val">${s.cust||'—'}</div></div>
-      <div class="field"><div class="field-label">Phone</div><div class="field-val">${s.phone||'—'}</div></div>
-      <div class="field full"><div class="field-label">Address</div><div class="field-val">${s.addr||'—'}</div></div>
-      <div class="field"><div class="field-label">Sales Date (AD)</div><div class="field-val">${s.date||'—'}</div></div>
-      <div class="field"><div class="field-label">Nepali Date (BS)</div><div class="field-val">${s.nepaliDate||'—'}</div></div>
-      <div class="field"><div class="field-label">Invoice No.</div><div class="field-val" style="font-family:monospace">${s.invoiceno||'—'}</div></div>
-      <div class="field"><div class="field-label">Sales VAT No.</div><div class="field-val">${s.vatno||'—'}</div></div>
+    <div style="display:flex;gap:12px;${custPhotoHtml?'padding:10px 12px 0 12px':''}">
+      ${custPhotoHtml}
+      <div class="grid" style="flex:1;${custPhotoHtml?'border-left:1px solid #f3f4f6':''}">
+        <div class="field"><div class="field-label">Customer Name</div><div class="field-val">${s.cust||'—'}</div></div>
+        <div class="field"><div class="field-label">Phone</div><div class="field-val">${s.phone||'—'}</div></div>
+        <div class="field full"><div class="field-label">Address</div><div class="field-val">${s.addr||'—'}</div></div>
+        <div class="field"><div class="field-label">Sales Date (AD)</div><div class="field-val">${s.date||'—'}</div></div>
+        <div class="field"><div class="field-label">Nepali Date (BS)</div><div class="field-val">${s.nepaliDate||'—'}</div></div>
+        <div class="field"><div class="field-label">Invoice No.</div><div class="field-val" style="font-family:monospace">${s.invoiceno||'—'}</div></div>
+        <div class="field"><div class="field-label">Sales VAT No.</div><div class="field-val">${s.vatno||'—'}</div></div>
+      </div>
     </div>
   </div>
 
@@ -6984,9 +7361,9 @@ function renderPurchase(){
   const sorted=[...filtered].map(p=>({...p,origIdx:purchases.indexOf(p)}))
     .sort((a,b)=>dateSortKey(b.date||b.dateAD).localeCompare(dateSortKey(a.date||a.dateAD)));
 
-  tbody.innerHTML=sorted.map((p,i)=>`
-    <tr>
-      <td style="text-align:center;font-weight:600;color:var(--gray-400)">${i+1}</td>
+  const purchaseRowHtml=(p,sn,rowCls,gid)=>`
+    <tr${rowCls?` class="${rowCls}"`:''}${gid?` data-gid="${gid}"`:''}>
+      <td style="text-align:center;font-weight:600;color:var(--gray-400)">${sn}</td>
       <td>${p.date||'—'}</td>
       <td>${p.dateAD||'—'}</td>
       <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.supplier||''}">${p.supplier||'—'}</td>
@@ -7010,7 +7387,37 @@ function renderPurchase(){
         </div>
       </td>
     </tr>
-  `).join('');
+  `;
+
+  const monthWise=document.getElementById('pur-month-group')?.checked;
+  if(!monthWise){
+    tbody.innerHTML=sorted.map((p,i)=>purchaseRowHtml(p,i+1,'','')).join('');
+    return;
+  }
+
+  // Month-wise grouped view — prefer AD date for a proper month name; fall back to raw BS year-month
+  const groups={};
+  const order=[];
+  sorted.forEach(p=>{
+    const adKey=dateSortKey(p.dateAD);
+    const bsKey=dateSortKey(p.date);
+    const mk=adKey?adKey.slice(0,7):(bsKey?'BS-'+bsKey.slice(0,7):'unknown');
+    if(!groups[mk]){groups[mk]={items:[],qty:0,total:0};order.push(mk);}
+    groups[mk].items.push(p);
+    groups[mk].qty+=Number(p.qty||0);
+    groups[mk].total+=Number(p.total||0);
+  });
+  let sn=0,html='';
+  order.forEach(mk=>{
+    const g=groups[mk];
+    const gid='pmgrp-'+mk.replace(/[^0-9]/g,'');
+    const label=mk==='unknown'?'Unknown Date':(mk.startsWith('BS-')?('BS '+mk.slice(3)):monthLabel(mk));
+    html+=`<tr class="group-header" onclick="toggleGroup('${gid}')">
+      <td colspan="17"><span class="group-chevron open" id="chev-${gid}">▶</span><strong>${label}</strong><span style="font-size:11px;color:var(--gray-400);margin-left:8px">${g.items.length} motorcycle${g.items.length!==1?'s':''} · Qty ${g.qty} · Rs.${fmt(g.total)}</span></td>
+    </tr>`;
+    g.items.forEach(p=>{sn++;html+=purchaseRowHtml(p,sn,'bike-row',gid);});
+  });
+  tbody.innerHTML=html;
 }
 
 // ── Render Purchase Metrics ──
